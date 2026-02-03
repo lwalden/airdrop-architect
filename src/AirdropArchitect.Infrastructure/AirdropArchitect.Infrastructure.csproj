@@ -4,6 +4,13 @@
     <ProjectReference Include="..\AirdropArchitect.Core\AirdropArchitect.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
+    <PackageReference Include="Polly" Version="8.6.5" />
+    <PackageReference Include="Stripe.net" Version="50.3.0" />
+    <PackageReference Include="Telegram.Bot" Version="22.8.1" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
