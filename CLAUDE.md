@@ -2,8 +2,56 @@
 
 ## Reference Documents
 
-- **Strategy & Roadmap:** See `/docs/strategy-roadmap.md` for full business context, 
+- **Strategy & Roadmap:** See `/docs/strategy-roadmap.md` for full business context,
   revenue model, competitive analysis, and technical architecture decisions.
+- **Progress Tracking:** See `/PROGRESS.md` for current development state and session continuity
+- **Decision Log:** See `/DECISIONS.md` for architectural decisions made
+
+---
+
+## Session Resume Protocol
+
+**IMPORTANT: At the start of EVERY new session, follow these steps:**
+
+1. **Read `/PROGRESS.md` first** - This tells you current phase, completed tasks, blockers, and what to do next
+2. **Check `/DECISIONS.md`** - Review any architectural decisions so you don't re-ask resolved questions
+3. **Run `git status`** - Check for any uncommitted work from previous sessions
+4. **Run `gh pr list`** - Check for any open PRs awaiting review
+5. **Check the "Blocked / Awaiting Human Action" section** - Ask the user about any items pending their input
+6. **Resume from "Next Session Should" in PROGRESS.md**
+
+**At the END of every session:**
+1. Update `/PROGRESS.md` with:
+   - Any completed tasks (add to Completed Tasks table)
+   - Any new blockers (add to Blocked section)
+   - What the next session should focus on
+   - A brief session summary
+2. Update `/DECISIONS.md` if any architectural decisions were made
+3. Commit progress tracking changes if meaningful work was done
+
+**When resuming and the user says "continue where we left off":**
+- Read PROGRESS.md
+- Summarize the current state briefly
+- Ask about any blocked items
+- Propose next steps based on "Next Session Should"
+
+**Mid-Session Token Cap Handling:**
+
+Sessions may end unexpectedly when Claude Pro token limits are reached. To minimize lost work:
+
+1. **Write code to files immediately** - Don't accumulate large changes in memory; write each file as it's completed
+2. **Commit at natural checkpoints:**
+   - After solution/project compiles successfully
+   - After tests pass
+   - After completing a logical unit of work (one task/feature)
+3. **Update PROGRESS.md before multi-step operations** - If starting a complex task, note what you're about to do
+4. **Prefer smaller, frequent commits** over one large commit at the end
+
+**If session ends mid-task:**
+- Files already written to disk are preserved
+- Uncommitted changes in staged files are preserved
+- Conversation context is NOT preserved (but can be scrolled back in the UI)
+- Next session: run `git status` and `git diff` to see partial work, then continue
   
 
 ## Project Overview
@@ -17,6 +65,11 @@ You are orchestrating the development of **Airdrop Architect**, a crypto airdrop
 - Prefers collaboration over autonomous execution of major decisions
 - Will create GitHub repos and merge PRs manually
 - Needs prompting for external service signups and credentials
+
+**Communication Preferences:**
+- Provide TL;DR summary first, then detailed explanation
+- Assume always available when working (no need to batch questions)
+- Medium risk tolerance: avoid bleeding edge/pre-release packages when possible
 
 ---
 
@@ -45,6 +98,29 @@ You are orchestrating the development of **Airdrop Architect**, a crypto airdrop
 - Use environment variables or Azure Key Vault
 - When you need a credential, ask: "Please provide your [SERVICE] API key. I'll store it in .env (gitignored) for local development."
 - Create `.env.example` files showing required variables WITHOUT values
+
+### Pull Request Workflow:
+- Create feature branches for meaningful chunks of work
+- Branch naming: `feature/short-description` or `fix/short-description`
+- PRs should include:
+  - Clear title describing the change
+  - Summary of what was changed and why
+  - Test plan (manual testing steps or automated test references)
+  - Any follow-up items or known limitations
+- Keep PRs reasonably sized - prefer multiple smaller PRs over one massive PR
+- Wait for human review before merging (user will merge manually)
+- After PR is merged, update PROGRESS.md with completed task
+
+### Test Plan Format:
+```markdown
+## Test Plan
+- [ ] Step 1: Description of what to test
+- [ ] Step 2: Expected outcome
+- [ ] Verify: Specific verification steps
+
+**Prerequisites:** What needs to be set up before testing
+**Environment:** Local / Azure / Both
+```
 
 ---
 
