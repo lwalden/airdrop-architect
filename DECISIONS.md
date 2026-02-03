@@ -119,17 +119,135 @@ When a significant decision is made during development, add it here with:
 
 ---
 
+### ADR-006: Observability and Error Handling Strategy
+**Date:** 2026-02-02
+**Status:** Decided
+
+**Context:** Need comprehensive monitoring and resilience for a system that depends on multiple external services (blockchain RPCs, Telegram API, payment providers).
+
+**Options:**
+1. Basic logging only
+2. Application Insights without distributed tracing
+3. Full observability stack with resilience patterns
+
+**Decision:**
+- **Observability:** Azure Application Insights with distributed tracing enabled
+- **Error Handling:** Polly library for retry policies, circuit breakers, and rate-limit handling
+- **Secret Management:** Azure Key Vault with 90-day rotation policy for API keys
+- **Alerting:** Application Insights alerts for >5% error rate or P95 latency >2s
+
+**Rationale:**
+- Blockchain RPC calls are inherently unreliable (rate limits, node issues)
+- Distributed tracing essential for debugging multi-function workflows
+- Secret rotation reduces blast radius of compromised credentials
+- Polly is the standard .NET resilience library
+
+**Implementation Notes:**
+- Add `Microsoft.Extensions.Http.Polly` NuGet package
+- Configure Polly policies per external service (different retry logic for Alchemy vs Stripe)
+- Enable W3C trace context propagation in Application Insights
+
+---
+
+### ADR-007: Cosmos DB Backup Strategy
+**Date:** 2026-02-02
+**Status:** Decided
+
+**Context:** Need disaster recovery plan for database corruption or accidental deletion.
+
+**Options:**
+1. No backup (rely on Cosmos DB's built-in replication)
+2. Periodic backup only (daily/weekly exports)
+3. Continuous backup with point-in-time restore
+
+**Decision:**
+- Enable Continuous Backup (7-day point-in-time restore)
+- Weekly export to Azure Blob Storage for long-term retention
+- Document restore procedure in runbook
+
+**Rationale:**
+- Continuous backup adds ~$0.20/GB/month but provides granular recovery
+- Serverless mode supports continuous backup
+- Export provides additional safety net and audit trail
+- Recovery documentation ensures we can act quickly in emergency
+
+**Implementation Notes:**
+- Enable continuous backup when creating Cosmos DB account
+- Create Azure Function on timer trigger for weekly blob export
+- Store exports in separate storage account for isolation
+
+---
+
+### ADR-008: Software Licensing
+**Date:** 2026-02-02
+**Status:** Decided
+
+**Context:** Need to decide on intellectual property approach for codebase.
+
+**Options:**
+1. MIT License (permissive open source)
+2. Apache 2.0 (permissive with patent grant)
+3. AGPL (copyleft, requires source disclosure)
+4. Proprietary / All Rights Reserved
+
+**Decision:** Proprietary / All Rights Reserved
+
+**Rationale:**
+- Core eligibility logic and airdrop criteria database are competitive advantages
+- SaaS business model doesn't benefit from open source
+- May open-source non-core utilities later if beneficial for marketing
+- No LICENSE file in repo = proprietary by default
+
+**Implementation Notes:**
+- Add copyright header to source files
+- If ever contributing open-source utilities, create separate repos with explicit license
+
+---
+
+### ADR-009: Data Ownership and Multi-Tenancy
+**Date:** 2026-02-02
+**Status:** Decided
+
+**Context:** Need to clarify data ownership for potential white-label/B2B licensing in Phase 3.
+
+**Decision:**
+- **Aggregated airdrop criteria:** Owned by Airdrop Architect
+- **User wallet data:** Owned by users, we are data processors
+- **B2B tenants:** Logical isolation via `tenantId` partition key
+- Database schema must support tenant isolation from Day 1
+
+**Rationale:**
+- Clear ownership enables white-label licensing without legal ambiguity
+- Partition key strategy enables data isolation without separate databases
+- GDPR requires clear processor/controller distinction
+- Forward-compatible schema avoids costly migration later
+
+**Implementation Notes:**
+- Add optional `tenantId` field to User model (null for direct users)
+- Partition key strategy: `tenantId` or `userId` depending on query patterns
+- Document data processing agreement template for B2B customers
+
+---
+
 ## Pending Decisions
 
 *Decisions that need to be made but haven't been finalized yet:*
 
 ### PDR-001: Authentication Strategy
 **Context:** How users authenticate to the web dashboard
+
 **Options to consider:**
 1. Telegram Login Widget (links to bot account)
 2. Magic link email auth
-3. Wallet-based auth (Sign-In with Ethereum)
+3. Wallet-based auth (Sign-In with Ethereum / SIWE)
 4. Traditional email/password
+5. Hybrid: Telegram primary + optional wallet linking
+
+**Considerations:**
+- SIWE adds trust/security for crypto-native users
+- SIWE could enable wallet verification without manual address entry
+- Telegram Login provides seamless bot↔web account linking
+- Hybrid approach offers flexibility but adds implementation complexity
 
 **Status:** Not yet decided - will address in Phase 4 with web dashboard
 
@@ -137,6 +255,7 @@ When a significant decision is made during development, add it here with:
 
 ### PDR-002: Points Tracking Method Priority
 **Context:** Which protocols to prioritize for points tracking
+
 **Considerations:**
 - Hyperliquid has API
 - Some protocols only have scrapeable dashboards
