@@ -1,0 +1,42 @@
+# Environment and secrets
+.env
+local.settings.json
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
+# Build outputs
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+*.bak
+
+# Dependencies
+node_modules/
+packages/
+
+# IDE
+.idea/
+*.swp
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Azure Functions
+local.settings.json
+
+# Test results
+TestResults/
+*.trx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings (contains user-specific paths)
+.claude/settings.local.json
