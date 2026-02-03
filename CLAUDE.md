@@ -99,16 +99,30 @@ You are orchestrating the development of **Airdrop Architect**, a crypto airdrop
 - When you need a credential, ask: "Please provide your [SERVICE] API key. I'll store it in .env (gitignored) for local development."
 - Create `.env.example` files showing required variables WITHOUT values
 
-### Pull Request Workflow:
-- Create feature branches for meaningful chunks of work
+### Git Workflow:
+- **NEVER commit directly to main** - Always use feature branches
 - Branch naming: `feature/short-description` or `fix/short-description`
+- Claude CAN: create branches, commit, push to remote, open PRs via `gh pr create`
+- Claude CANNOT: merge PRs to main (user does this manually)
+- After user merges PR: switch back to main, pull, then start next feature branch
+
+**Typical flow:**
+```bash
+git checkout -b feature/telegram-bot-skeleton
+# ... make changes, commit frequently ...
+git push -u origin feature/telegram-bot-skeleton
+gh pr create --title "Add Telegram bot skeleton" --body "..."
+# Wait for user to review and merge
+# User says "merged" → git checkout main && git pull
+```
+
+### Pull Request Format:
 - PRs should include:
   - Clear title describing the change
   - Summary of what was changed and why
   - Test plan (manual testing steps or automated test references)
   - Any follow-up items or known limitations
 - Keep PRs reasonably sized - prefer multiple smaller PRs over one massive PR
-- Wait for human review before merging (user will merge manually)
 - After PR is merged, update PROGRESS.md with completed task
 
 ### Test Plan Format:
