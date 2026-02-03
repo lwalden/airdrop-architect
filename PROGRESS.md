@@ -8,9 +8,9 @@
 ## Current State
 
 **Phase:** 1 - Foundation
-**Week:** 1
+**Week:** 2
 **Last Updated:** 2026-02-03
-**Last Session Focus:** Azure DEV environment setup via CLI, .NET solution scaffolding
+**Last Session Focus:** Telegram bot foundation (Tasks 2.1-2.3)
 
 ---
 
@@ -40,12 +40,17 @@ When starting a new session, Claude should:
 | Task 1.4: Azure DEV resources | 2026-02-03 | Created via Azure CLI (see details below) |
 | Task 1.5: Application Insights | 2026-02-03 | airdrop-architect-dev-insights created |
 | ADR-010: Multi-environment | 2026-02-03 | Documented naming convention for dev/uat/prod |
+| Task 2.1: Telegram bot created | 2026-02-03 | @GetAirdropArchitectBot via BotFather |
+| Task 2.2: TelegramBotService | 2026-02-03 | Full command handling implemented |
+| Task 2.3: Telegram webhook | 2026-02-03 | /api/telegram/webhook endpoint |
 
 ---
 
 ## In Progress
 
-*Nothing currently in progress - Week 1 complete!*
+| Task | Status | Notes |
+|------|--------|-------|
+| PR #5 | Awaiting merge | Telegram bot foundation |
 
 ---
 
@@ -68,7 +73,6 @@ When starting a new session, Claude should:
 
 | Item | What's Needed | Date Added |
 |------|---------------|------------|
-| Telegram bot | User needs to create bot via @BotFather | 2026-02-02 |
 | Alchemy API key | User needs to sign up at alchemy.com | 2026-02-02 |
 | Stripe account | User needs to create Stripe account and products | 2026-02-02 |
 | Coinbase Commerce | User needs to create Coinbase Commerce account | 2026-02-02 |
@@ -80,9 +84,9 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Verify Redis Cache completed** - Get connection string and update .env
-2. **Begin Week 2: Telegram Bot Foundation** - User needs to create bot via @BotFather first
-3. **Create feature branch** for Telegram bot implementation
+1. **Merge PR #5** - Telegram bot foundation
+2. **Test Telegram bot locally** - Run functions, expose via ngrok, register webhook
+3. **Begin Week 3 or Week 4** - Either external services (Alchemy) or Cosmos DB service layer
 4. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
 ---
@@ -97,9 +101,9 @@ When starting a new session, Claude should:
 - [x] **Task 1.5:** Application Insights configured
 
 ### Week 2: Telegram Bot Foundation
-- [ ] **Task 2.1:** Telegram bot created via BotFather ⚠️ HUMAN
-- [ ] **Task 2.2:** TelegramBotService implemented
-- [ ] **Task 2.3:** Telegram webhook function created
+- [x] **Task 2.1:** Telegram bot created via BotFather (@GetAirdropArchitectBot)
+- [x] **Task 2.2:** TelegramBotService implemented
+- [x] **Task 2.3:** Telegram webhook function created
 
 ### Week 3: External Service Setup
 - [ ] **Task 3.1:** Alchemy API connected
@@ -146,6 +150,28 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-03 (Session 4)
+**Focus:** Telegram bot foundation (Week 2)
+**What happened:**
+- User created Telegram bot: @GetAirdropArchitectBot
+- Added bot token to .env and local.settings.json
+- Created core interfaces: ITelegramBotService, IUserService
+- Created core models: User, TrackedWallet
+- Implemented TelegramBotService with all command handlers:
+  - /start, /help - Welcome and help messages
+  - /check, /points - Placeholders for Phase 2
+  - /track, /wallets - Wallet tracking
+  - /status, /upgrade - Subscription management
+- Created TelegramWebhookFunction at /api/telegram/webhook
+- Added InMemoryUserService for development
+- Configured DI in Program.cs
+- Build successful: 0 errors, 0 warnings
+- Created PR #5
+
+**Outcome:** Week 2 complete, bot code ready for testing
+
+---
 
 ### Session: 2026-02-03 (Session 3)
 **Focus:** Azure DEV environment setup via CLI
