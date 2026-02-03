@@ -264,3 +264,45 @@ When a significant decision is made during development, add it here with:
 **Status:** Will decide at start of Phase 2
 
 ---
+
+### ADR-010: Multi-Environment Strategy
+**Date:** 2026-02-03
+**Status:** Decided
+
+**Context:** Need to support multiple deployment environments (dev, uat, prod) with consistent naming and isolation.
+
+**Decision:**
+- **Naming Convention:** `airdrop-architect-{env}-{resource}` (e.g., `airdrop-architect-dev-cosmos`)
+- **Resource Groups:** One per environment (`airdrop-architect-dev-rg`, `airdrop-architect-uat-rg`, `airdrop-architect-prod-rg`)
+- **Region:** West US 2 for all environments (simplifies networking, reduces latency between services)
+- **Isolation:** Complete resource isolation between environments (no shared databases)
+
+**Environments:**
+| Environment | Purpose | Cost Tier |
+|-------------|---------|-----------|
+| DEV | Development and testing | Serverless/Basic |
+| UAT | User acceptance testing, pre-prod validation | Serverless/Basic |
+| PROD | Production traffic | Serverless initially, upgrade as needed |
+
+**Resource Naming:**
+| Resource | DEV | UAT | PROD |
+|----------|-----|-----|------|
+| Resource Group | airdrop-architect-dev-rg | airdrop-architect-uat-rg | airdrop-architect-prod-rg |
+| Cosmos DB | airdrop-architect-dev-cosmos | airdrop-architect-uat-cosmos | airdrop-architect-prod-cosmos |
+| Redis Cache | airdrop-architect-dev-redis | airdrop-architect-uat-redis | airdrop-architect-prod-redis |
+| App Insights | airdrop-architect-dev-insights | airdrop-architect-uat-insights | airdrop-architect-prod-insights |
+| Function App | airdrop-architect-dev-func | airdrop-architect-uat-func | airdrop-architect-prod-func |
+
+**Rationale:**
+- Clear naming prevents accidental cross-environment operations
+- Resource group isolation enables easy cost tracking per environment
+- Same region reduces complexity and cross-region data transfer costs
+- Consistent pattern scales to additional environments if needed
+
+**Implementation Notes:**
+- Use Azure CLI scripts or Bicep templates for repeatable environment creation
+- Store environment-specific connection strings in `.env.{environment}` files locally
+- Azure Functions will use App Configuration or environment variables for runtime config
+- DEV environment created 2026-02-03
+
+---
