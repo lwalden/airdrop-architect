@@ -672,7 +672,7 @@ public class TelegramBotService : ITelegramBotService
 
             // For Telegram, we use a simple success/cancel URL pattern
             // In production, this would be a dedicated web page
-            var baseUrl = "https://t.me/AirdropArchitectBot";
+            var baseUrl = "https://t.me/GetAirdropArchitectBot";
             var successUrl = $"{baseUrl}?start=payment_success";
             var cancelUrl = $"{baseUrl}?start=payment_cancelled";
 
@@ -742,7 +742,7 @@ public class TelegramBotService : ITelegramBotService
                 return;
             }
 
-            var baseUrl = "https://t.me/AirdropArchitectBot";
+            var baseUrl = "https://t.me/GetAirdropArchitectBot";
             var successUrl = $"{baseUrl}?start=reveal_success";
             var cancelUrl = $"{baseUrl}?start=reveal_cancelled";
 
