@@ -10,7 +10,7 @@
 **Phase:** 1 - Foundation
 **Week:** 3
 **Last Updated:** 2026-02-03
-**Last Session Focus:** Alchemy blockchain service integration (Task 3.1)
+**Last Session Focus:** Stripe payment integration (Task 3.2)
 
 ---
 
@@ -46,6 +46,8 @@ When starting a new session, Claude should:
 | PR #5 merged | 2026-02-03 | Telegram bot foundation |
 | Local testing completed | 2026-02-03 | Bot tested via ngrok |
 | Task 3.1: Alchemy API | 2026-02-03 | AlchemyService + IBlockchainService, multi-chain support |
+| PR #6 merged | 2026-02-03 | Alchemy blockchain service integration |
+| Task 3.2: Stripe integration | 2026-02-03 | IPaymentService, StripeService, webhook function |
 
 ---
 
@@ -53,7 +55,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #6 | Awaiting merge | Alchemy blockchain service integration |
+| PR #7 | Awaiting merge | Stripe payment integration |
 
 ---
 
@@ -76,7 +78,8 @@ When starting a new session, Claude should:
 
 | Item | What's Needed | Date Added |
 |------|---------------|------------|
-| Stripe account | User needs to create Stripe account and products | 2026-02-02 |
+| ~~Stripe account~~ | ~~User needs to create Stripe account and products~~ | ~~2026-02-02~~ ✅ DONE |
+| Stripe webhook setup | User needs to configure webhook URL in Stripe Dashboard (for production) | 2026-02-03 |
 | Coinbase Commerce | User needs to create Coinbase Commerce account | 2026-02-02 |
 | **Legal: Terms of Service** | User needs to draft/review ToS with "not financial advice" disclaimer | 2026-02-02 |
 | **Legal: Privacy Policy** | User needs to draft GDPR/CCPA-compliant privacy policy | 2026-02-02 |
@@ -86,11 +89,12 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #6** - Alchemy blockchain service integration
-2. **Test Alchemy integration** - Run bot locally, test /check with real wallets
-3. **Week 4: Cosmos DB service layer** - Implement persistent storage for users
-4. **Optional: Stripe setup** - If user has created Stripe account, configure Task 3.2
-5. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
+1. **Merge PR #7** - Stripe payment integration
+2. **Test Stripe checkout** - Run bot locally, test /upgrade command flow
+3. **Configure Stripe webhook** - Set up webhook URL in Stripe Dashboard for local testing (`stripe listen --forward-to localhost:7071/api/payments/stripe/webhook`)
+4. **Week 4: Cosmos DB service layer** - Implement persistent storage for users
+5. **Task 3.3: Coinbase Commerce** - If user has created account, add crypto payment option
+6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
 ---
 
@@ -110,7 +114,7 @@ When starting a new session, Claude should:
 
 ### Week 3: External Service Setup
 - [x] **Task 3.1:** Alchemy API connected (PR #6)
-- [ ] **Task 3.2:** Stripe account and products configured ⚠️ HUMAN
+- [x] **Task 3.2:** Stripe integration complete (PR #7)
 - [ ] **Task 3.3:** Coinbase Commerce configured ⚠️ HUMAN
 
 ### Week 4: Core Models & Database
@@ -153,6 +157,39 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-03 (Session 6)
+**Focus:** Stripe payment integration (Task 3.2)
+**What happened:**
+- User provided Stripe credentials:
+  - Secret key (sk_test_...)
+  - Product IDs for Tracker, Architect, API, Wallet Reveal
+  - Price IDs for each product
+- Created IPaymentService interface with:
+  - CreateSubscriptionCheckoutAsync - Generate Stripe checkout sessions
+  - CreateRevealCheckoutAsync - One-time purchase for wallet reveals
+  - ProcessWebhookAsync - Handle Stripe webhook events
+  - CancelSubscriptionAsync - Cancel at period end
+  - GetSubscriptionStatusAsync - Check current subscription
+  - CreateCustomerPortalSessionAsync - Manage subscriptions
+- Created StripeService implementation:
+  - Uses Stripe.net SDK v50
+  - Handles checkout.session.completed, subscription CRUD, invoice events
+  - Automatic Stripe customer creation with user metadata
+  - Maps subscription tier from metadata
+- Created StripeWebhookFunction at /api/payments/stripe/webhook
+- Updated TelegramBotService:
+  - /upgrade now shows tier selection buttons
+  - Clicking a tier generates a real Stripe checkout link
+  - Added HandleSubscribeCallbackAsync for checkout flow
+  - Added HandleRevealCallbackAsync for wallet reveal purchases
+- Wired up StripeService in Program.cs DI with config from environment variables
+- Build successful: 0 errors (6 warnings from Nethereum version constraint)
+- Created PR #7
+
+**Outcome:** Task 3.2 complete, /upgrade command generates real Stripe checkout links
+
+---
 
 ### Session: 2026-02-03 (Session 5)
 **Focus:** Alchemy blockchain service integration (Week 3)
