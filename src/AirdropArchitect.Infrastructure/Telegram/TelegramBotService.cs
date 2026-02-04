@@ -14,6 +14,7 @@ public class TelegramBotService : ITelegramBotService
     private readonly ITelegramBotClient _bot;
     private readonly IUserService _userService;
     private readonly IBlockchainService _blockchainService;
+    private readonly IPaymentService _paymentService;
     private readonly ILogger<TelegramBotService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -25,11 +26,13 @@ public class TelegramBotService : ITelegramBotService
         ITelegramBotClient bot,
         IUserService userService,
         IBlockchainService blockchainService,
+        IPaymentService paymentService,
         ILogger<TelegramBotService> logger)
     {
         _bot = bot;
         _userService = userService;
         _blockchainService = blockchainService;
+        _paymentService = paymentService;
         _logger = logger;
     }
 
@@ -512,14 +515,20 @@ public class TelegramBotService : ITelegramBotService
             - Everything in Architect
             - REST API access
             - Webhooks
+
+            Select a plan to upgrade:
             """;
 
         var keyboard = new InlineKeyboardMarkup(new[]
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("Pay with Card", "upgrade:card"),
-                InlineKeyboardButton.WithCallbackData("Pay with Crypto", "upgrade:crypto")
+                InlineKeyboardButton.WithCallbackData("Tracker $9/mo", "subscribe:tracker"),
+                InlineKeyboardButton.WithCallbackData("Architect $29/mo", "subscribe:architect")
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("API $99/mo", "subscribe:api")
             }
         });
 
@@ -534,24 +543,138 @@ public class TelegramBotService : ITelegramBotService
     private async Task HandleCallbackAsync(CallbackQuery callback, CancellationToken ct)
     {
         var chatId = callback.Message!.Chat.Id;
+        var telegramId = callback.From.Id;
         var data = callback.Data ?? "";
 
-        if (data.StartsWith("upgrade:"))
+        if (data.StartsWith("subscribe:"))
         {
-            var method = data.Split(':')[1];
-            // TODO: Generate payment link and send to user in Phase 3
-            await _bot.AnswerCallbackQuery(
-                callback.Id,
-                "Payment integration coming soon!",
-                cancellationToken: ct);
+            var tier = data.Split(':')[1];
+            await HandleSubscribeCallbackAsync(callback, chatId, telegramId, tier, ct);
         }
         else if (data.StartsWith("reveal:"))
         {
             var address = data.Split(':')[1];
-            // TODO: Handle reveal purchase in Phase 3
+            await HandleRevealCallbackAsync(callback, chatId, telegramId, address, ct);
+        }
+    }
+
+    private async Task HandleSubscribeCallbackAsync(
+        CallbackQuery callback,
+        long chatId,
+        long telegramId,
+        string tier,
+        CancellationToken ct)
+    {
+        try
+        {
+            await _bot.AnswerCallbackQuery(callback.Id, "Generating checkout link...", cancellationToken: ct);
+
+            var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
+
+            // For Telegram, we use a simple success/cancel URL pattern
+            // In production, this would be a dedicated web page
+            var baseUrl = "https://t.me/AirdropArchitectBot";
+            var successUrl = $"{baseUrl}?start=payment_success";
+            var cancelUrl = $"{baseUrl}?start=payment_cancelled";
+
+            var session = await _paymentService.CreateSubscriptionCheckoutAsync(
+                user.Id,
+                tier,
+                successUrl,
+                cancelUrl,
+                ct);
+
+            var tierName = tier.ToUpperInvariant();
+            var price = tier switch
+            {
+                "tracker" => "$9",
+                "architect" => "$29",
+                "api" => "$99",
+                _ => "?"
+            };
+
+            await _bot.SendMessage(
+                chatId,
+                $"*Upgrade to {tierName}*\n\n" +
+                $"Price: {price}/month\n\n" +
+                $"Click the link below to complete your purchase:\n" +
+                $"{session.Url}\n\n" +
+                $"_Link expires in 24 hours_",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+
+            _logger.LogInformation(
+                "Generated checkout link for user {UserId}, tier {Tier}",
+                user.Id, tier);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating checkout session for tier {Tier}", tier);
             await _bot.AnswerCallbackQuery(
                 callback.Id,
-                "Reveal feature coming soon!",
+                "Error generating checkout link. Please try again.",
+                showAlert: true,
+                cancellationToken: ct);
+        }
+    }
+
+    private async Task HandleRevealCallbackAsync(
+        CallbackQuery callback,
+        long chatId,
+        long telegramId,
+        string walletAddress,
+        CancellationToken ct)
+    {
+        try
+        {
+            await _bot.AnswerCallbackQuery(callback.Id, "Generating checkout link...", cancellationToken: ct);
+
+            var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
+
+            // Check if already revealed
+            if (user.RevealedWallets.Contains(walletAddress, StringComparer.OrdinalIgnoreCase))
+            {
+                await _bot.SendMessage(
+                    chatId,
+                    $"You've already unlocked details for `{ShortenAddress(walletAddress)}`",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+                return;
+            }
+
+            var baseUrl = "https://t.me/AirdropArchitectBot";
+            var successUrl = $"{baseUrl}?start=reveal_success";
+            var cancelUrl = $"{baseUrl}?start=reveal_cancelled";
+
+            var session = await _paymentService.CreateRevealCheckoutAsync(
+                user.Id,
+                walletAddress,
+                successUrl,
+                cancelUrl,
+                ct);
+
+            await _bot.SendMessage(
+                chatId,
+                $"*Unlock Wallet Details*\n\n" +
+                $"Wallet: `{ShortenAddress(walletAddress)}`\n" +
+                $"Price: $5 one-time\n\n" +
+                $"Click the link below to unlock:\n" +
+                $"{session.Url}\n\n" +
+                $"_Link expires in 24 hours_",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+
+            _logger.LogInformation(
+                "Generated reveal checkout link for user {UserId}, wallet {Wallet}",
+                user.Id, ShortenAddress(walletAddress));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating reveal checkout for wallet {Wallet}", walletAddress);
+            await _bot.AnswerCallbackQuery(
+                callback.Id,
+                "Error generating checkout link. Please try again.",
+                showAlert: true,
                 cancellationToken: ct);
         }
     }
