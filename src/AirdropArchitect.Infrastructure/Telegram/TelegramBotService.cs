@@ -593,14 +593,15 @@ public class TelegramBotService : ITelegramBotService
                 _ => "?"
             };
 
+            // Use HTML mode to avoid Markdown corrupting URLs with underscores
             await _bot.SendMessage(
                 chatId,
-                $"*Upgrade to {tierName}*\n\n" +
+                $"<b>Upgrade to {tierName}</b>\n\n" +
                 $"Price: {price}/month\n\n" +
                 $"Click the link below to complete your purchase:\n" +
                 $"{session.Url}\n\n" +
-                $"_Link expires in 24 hours_",
-                parseMode: ParseMode.Markdown,
+                $"<i>Link expires in 24 hours</i>",
+                parseMode: ParseMode.Html,
                 cancellationToken: ct);
 
             _logger.LogInformation(
@@ -653,15 +654,16 @@ public class TelegramBotService : ITelegramBotService
                 cancelUrl,
                 ct);
 
+            // Use HTML mode to avoid Markdown corrupting URLs with underscores
             await _bot.SendMessage(
                 chatId,
-                $"*Unlock Wallet Details*\n\n" +
-                $"Wallet: `{ShortenAddress(walletAddress)}`\n" +
+                $"<b>Unlock Wallet Details</b>\n\n" +
+                $"Wallet: <code>{ShortenAddress(walletAddress)}</code>\n" +
                 $"Price: $5 one-time\n\n" +
                 $"Click the link below to unlock:\n" +
                 $"{session.Url}\n\n" +
-                $"_Link expires in 24 hours_",
-                parseMode: ParseMode.Markdown,
+                $"<i>Link expires in 24 hours</i>",
+                parseMode: ParseMode.Html,
                 cancellationToken: ct);
 
             _logger.LogInformation(
