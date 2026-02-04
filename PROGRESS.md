@@ -8,9 +8,9 @@
 ## Current State
 
 **Phase:** 1 - Foundation
-**Week:** 2
+**Week:** 3
 **Last Updated:** 2026-02-03
-**Last Session Focus:** Telegram bot foundation (Tasks 2.1-2.3)
+**Last Session Focus:** Alchemy blockchain service integration (Task 3.1)
 
 ---
 
@@ -43,6 +43,9 @@ When starting a new session, Claude should:
 | Task 2.1: Telegram bot created | 2026-02-03 | @GetAirdropArchitectBot via BotFather |
 | Task 2.2: TelegramBotService | 2026-02-03 | Full command handling implemented |
 | Task 2.3: Telegram webhook | 2026-02-03 | /api/telegram/webhook endpoint |
+| PR #5 merged | 2026-02-03 | Telegram bot foundation |
+| Local testing completed | 2026-02-03 | Bot tested via ngrok |
+| Task 3.1: Alchemy API | 2026-02-03 | AlchemyService + IBlockchainService, multi-chain support |
 
 ---
 
@@ -50,7 +53,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #5 | Awaiting merge | Telegram bot foundation |
+| PR #6 | Awaiting merge | Alchemy blockchain service integration |
 
 ---
 
@@ -73,7 +76,6 @@ When starting a new session, Claude should:
 
 | Item | What's Needed | Date Added |
 |------|---------------|------------|
-| Alchemy API key | User needs to sign up at alchemy.com | 2026-02-02 |
 | Stripe account | User needs to create Stripe account and products | 2026-02-02 |
 | Coinbase Commerce | User needs to create Coinbase Commerce account | 2026-02-02 |
 | **Legal: Terms of Service** | User needs to draft/review ToS with "not financial advice" disclaimer | 2026-02-02 |
@@ -84,10 +86,11 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #5** - Telegram bot foundation
-2. **Test Telegram bot locally** - Run functions, expose via ngrok, register webhook
-3. **Begin Week 3 or Week 4** - Either external services (Alchemy) or Cosmos DB service layer
-4. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
+1. **Merge PR #6** - Alchemy blockchain service integration
+2. **Test Alchemy integration** - Run bot locally, test /check with real wallets
+3. **Week 4: Cosmos DB service layer** - Implement persistent storage for users
+4. **Optional: Stripe setup** - If user has created Stripe account, configure Task 3.2
+5. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
 ---
 
@@ -106,7 +109,7 @@ When starting a new session, Claude should:
 - [x] **Task 2.3:** Telegram webhook function created
 
 ### Week 3: External Service Setup
-- [ ] **Task 3.1:** Alchemy API connected
+- [x] **Task 3.1:** Alchemy API connected (PR #6)
 - [ ] **Task 3.2:** Stripe account and products configured ⚠️ HUMAN
 - [ ] **Task 3.3:** Coinbase Commerce configured ⚠️ HUMAN
 
@@ -150,6 +153,34 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-03 (Session 5)
+**Focus:** Alchemy blockchain service integration (Week 3)
+**What happened:**
+- User provided Alchemy API key
+- Added Nethereum.Web3 package for Ethereum RPC calls
+- Created IBlockchainService interface with:
+  - GetNativeBalanceAsync - Fetch ETH/MATIC balances
+  - GetWalletActivityAsync - Fetch transaction counts
+  - GetTokenBalancesAsync - Placeholder for ERC-20 tokens
+  - IsContractAsync - Detect contracts vs EOAs
+  - GetGasPriceAsync - Current network gas prices
+- Created AlchemyService implementation:
+  - Supports 5 EVM chains: Ethereum, Arbitrum, Optimism, Base, Polygon
+  - Uses Polly retry policy (3 retries, exponential backoff)
+  - Lazy-initializes Web3 clients per chain
+- Updated TelegramBotService /check command:
+  - Now fetches real balances from all 5 chains in parallel
+  - Shows transaction counts per chain
+  - Gracefully handles per-chain failures (shows partial results)
+  - Solana addresses show "coming soon" message
+- Wired up IBlockchainService in Program.cs DI
+- Build successful: 0 errors (6 warnings from Nethereum version constraint)
+- Created PR #6
+
+**Outcome:** Task 3.1 complete, /check command now shows real on-chain data
+
+---
 
 ### Session: 2026-02-03 (Session 4)
 **Focus:** Telegram bot foundation (Week 2)
