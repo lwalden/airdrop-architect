@@ -3,12 +3,14 @@ using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Cosmos;
 using Telegram.Bot;
 using AirdropArchitect.Core.Interfaces;
 using AirdropArchitect.Infrastructure.Telegram;
 using AirdropArchitect.Infrastructure.Services;
 using AirdropArchitect.Infrastructure.Blockchain;
 using AirdropArchitect.Infrastructure.Payments;
+using AirdropArchitect.Infrastructure.Data;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -55,8 +57,38 @@ builder.Services.AddSingleton<IPaymentService>(sp =>
     return new StripeService(stripeSecretKey, stripeWebhookSecret, stripeProductConfig, userService, logger);
 });
 
-// Services
-builder.Services.AddSingleton<IUserService, InMemoryUserService>();
+// User Service - Use Cosmos DB if connection string available, otherwise in-memory
+var cosmosConnectionString = Environment.GetEnvironmentVariable("COSMOS_CONNECTION_STRING");
+var cosmosDatabaseName = Environment.GetEnvironmentVariable("COSMOS_DATABASE_NAME") ?? "airdrop-db";
+
+if (!string.IsNullOrEmpty(cosmosConnectionString))
+{
+    // Production: Use Cosmos DB
+    builder.Services.AddSingleton(sp =>
+    {
+        var options = new CosmosClientOptions
+        {
+            SerializerOptions = new CosmosSerializationOptions
+            {
+                PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
+            }
+        };
+        return new CosmosClient(cosmosConnectionString, options);
+    });
+
+    builder.Services.AddSingleton<IUserService>(sp =>
+    {
+        var cosmosClient = sp.GetRequiredService<CosmosClient>();
+        var logger = sp.GetRequiredService<ILogger<CosmosDbUserService>>();
+        return new CosmosDbUserService(cosmosClient, cosmosDatabaseName, logger);
+    });
+}
+else
+{
+    // Development: Use in-memory storage
+    builder.Services.AddSingleton<IUserService, InMemoryUserService>();
+}
+
 builder.Services.AddSingleton<ITelegramBotService, TelegramBotService>();
 
 builder.Build().Run();
