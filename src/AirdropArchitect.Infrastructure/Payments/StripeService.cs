@@ -79,7 +79,7 @@ public class StripeService : IPaymentService
                     Quantity = 1
                 }
             },
-            SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
+            SuccessUrl = successUrl,
             CancelUrl = cancelUrl,
             Metadata = new Dictionary<string, string>
             {
@@ -138,7 +138,7 @@ public class StripeService : IPaymentService
                     Quantity = 1
                 }
             },
-            SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
+            SuccessUrl = successUrl,
             CancelUrl = cancelUrl,
             Metadata = new Dictionary<string, string>
             {
