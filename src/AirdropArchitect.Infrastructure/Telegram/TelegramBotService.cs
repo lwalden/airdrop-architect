@@ -91,7 +91,7 @@ public class TelegramBotService : ITelegramBotService
         switch (command)
         {
             case "/start":
-                await SendWelcomeAsync(chatId, ct);
+                await HandleStartCommandAsync(chatId, telegramId, args, ct);
                 break;
             case "/check":
                 await HandleCheckCommandAsync(chatId, telegramId, args, ct);
@@ -121,6 +121,105 @@ public class TelegramBotService : ITelegramBotService
                 }
                 break;
         }
+    }
+
+    private async Task HandleStartCommandAsync(
+        long chatId,
+        long telegramId,
+        string[] args,
+        CancellationToken ct)
+    {
+        // Check for deep link parameters (e.g., /start payment_success)
+        if (args.Length > 0)
+        {
+            var param = args[0].ToLowerInvariant();
+
+            // Handle payment success callback
+            if (param.StartsWith("payment_success"))
+            {
+                await HandlePaymentSuccessAsync(chatId, telegramId, ct);
+                return;
+            }
+
+            // Handle payment cancelled callback
+            if (param.StartsWith("payment_cancelled"))
+            {
+                await _bot.SendMessage(
+                    chatId,
+                    "Payment was cancelled. No worries - you can upgrade anytime with /upgrade",
+                    cancellationToken: ct);
+                return;
+            }
+
+            // Handle reveal success callback
+            if (param.StartsWith("reveal_success"))
+            {
+                await _bot.SendMessage(
+                    chatId,
+                    "Wallet details unlocked! Use /check with the wallet address to see full details.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            // Handle reveal cancelled callback
+            if (param.StartsWith("reveal_cancelled"))
+            {
+                await _bot.SendMessage(
+                    chatId,
+                    "Reveal purchase was cancelled.",
+                    cancellationToken: ct);
+                return;
+            }
+        }
+
+        // Default: show welcome message
+        await SendWelcomeAsync(chatId, ct);
+    }
+
+    private async Task HandlePaymentSuccessAsync(long chatId, long telegramId, CancellationToken ct)
+    {
+        var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
+        var tier = user.SubscriptionTier;
+
+        // If webhook hasn't processed yet, tier might still be "free"
+        // In that case, show a generic success message
+        if (tier == "free")
+        {
+            await _bot.SendMessage(
+                chatId,
+                "<b>Payment Received!</b>\n\n" +
+                "Your subscription is being activated. This usually takes just a few seconds.\n\n" +
+                "Use /status to check your subscription status.",
+                parseMode: ParseMode.Html,
+                cancellationToken: ct);
+            return;
+        }
+
+        var tierName = tier.ToUpperInvariant();
+        var features = tier switch
+        {
+            "tracker" => "• Track up to 10 wallets\n• Telegram alerts\n• Claim deadline reminders",
+            "architect" => "• Unlimited wallet tracking\n• Points dashboard\n• Path-to-eligibility tips\n• Sybil protection analyzer",
+            "api" => "• Everything in Architect\n• REST API access\n• Webhooks for automation",
+            _ => ""
+        };
+
+        var expiresInfo = user.SubscriptionExpiresAt.HasValue
+            ? $"\n\nYour subscription renews on {user.SubscriptionExpiresAt:MMMM d, yyyy}"
+            : "";
+
+        await _bot.SendMessage(
+            chatId,
+            $"<b>Welcome to {tierName}!</b>\n\n" +
+            $"Your subscription is now active.\n\n" +
+            $"<b>Your features:</b>\n{features}{expiresInfo}\n\n" +
+            $"<b>Quick start:</b>\n" +
+            $"• /check <code>0x...</code> - Check a wallet\n" +
+            $"• /track <code>0x...</code> - Start tracking\n" +
+            $"• /status - View your subscription\n\n" +
+            $"Thanks for supporting Airdrop Architect!",
+            parseMode: ParseMode.Html,
+            cancellationToken: ct);
     }
 
     private async Task SendWelcomeAsync(long chatId, CancellationToken ct)

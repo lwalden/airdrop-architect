@@ -306,3 +306,31 @@ When a significant decision is made during development, add it here with:
 - DEV environment created 2026-02-03
 
 ---
+
+### PDR-002: Transactional Email Service
+**Date:** 2026-02-03
+**Status:** Pending Decision
+
+**Context:** Users completing payment have no email confirmation - they only see an in-app Telegram message. For a professional payment experience, we need:
+- Payment receipt emails
+- Welcome emails explaining tier features
+- Subscription renewal reminders
+- Payment failure notifications
+
+**Options:**
+1. **SendGrid** - Industry standard, generous free tier (100 emails/day), excellent deliverability
+2. **Azure Communication Services** - Native Azure integration, pay-per-email pricing
+3. **Stripe-native emails** - Stripe can send receipts automatically, limited customization
+4. **Postmark** - Great for transactional email, excellent templates
+
+**Considerations:**
+- Need user email address (currently optional in User model)
+- Email collection UX: Stripe checkout can collect email
+- GDPR compliance: Need unsubscribe option for non-transactional emails
+- Integration effort vs. feature value
+
+**Recommendation:** Start with **Stripe's native receipt emails** (free, automatic) and add SendGrid for welcome/feature emails in Phase 2.
+
+**Action Required:** User to decide on email provider preference
+
+---

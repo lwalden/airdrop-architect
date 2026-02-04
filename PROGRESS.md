@@ -85,6 +85,13 @@ When starting a new session, Claude should:
 | **Legal: Privacy Policy** | User needs to draft GDPR/CCPA-compliant privacy policy | 2026-02-02 |
 | **Legal: MSB/AML consultation** | User needs to consult attorney on Success Fee regulatory implications | 2026-02-02 |
 
+## Future Enhancements (Phase 2)
+
+| Feature | Description | Priority |
+|---------|-------------|----------|
+| Transactional Email | Payment receipts, welcome emails, subscription notifications via SendGrid/Azure Communication Services | Medium |
+| Email Collection | Prompt users for email during payment for receipts and account recovery | Medium |
+
 ---
 
 ## Next Session Should
