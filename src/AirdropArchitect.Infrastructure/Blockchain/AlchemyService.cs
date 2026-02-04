@@ -41,20 +41,67 @@ public class AlchemyService : IBlockchainService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Configure retry policy with exponential backoff
-        // Blockchain RPCs can be flaky, so we retry with increasing delays
+        // Only retry on transient errors (5xx, timeouts), not on 4xx client errors
         _retryPolicy = Policy
-            .Handle<Exception>()
+            .Handle<Exception>(ex => IsTransientError(ex))
             .WaitAndRetryAsync(
                 retryCount: 3,
                 sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
                 onRetry: (exception, timeSpan, retryCount, context) =>
                 {
                     _logger.LogWarning(
-                        exception,
-                        "Retry {RetryCount} for blockchain call after {Delay}s",
+                        "Retry {RetryCount} for blockchain call after {Delay}s: {Message}",
                         retryCount,
-                        timeSpan.TotalSeconds);
+                        timeSpan.TotalSeconds,
+                        exception.Message);
                 });
+    }
+
+    /// <summary>
+    /// Determines if an exception is transient and worth retrying.
+    /// Returns false for 4xx client errors (like 403 Forbidden).
+    /// </summary>
+    private static bool IsTransientError(Exception ex)
+    {
+        // Check for HttpRequestException with status code
+        if (ex is System.Net.Http.HttpRequestException httpEx)
+        {
+            // Don't retry on 4xx client errors (400-499)
+            if (httpEx.StatusCode.HasValue)
+            {
+                var statusCode = (int)httpEx.StatusCode.Value;
+                if (statusCode >= 400 && statusCode < 500)
+                {
+                    return false; // Client error - don't retry
+                }
+            }
+            return true; // 5xx or unknown - retry
+        }
+
+        // Check inner exception for HttpRequestException
+        if (ex.InnerException is System.Net.Http.HttpRequestException innerHttpEx)
+        {
+            if (innerHttpEx.StatusCode.HasValue)
+            {
+                var statusCode = (int)innerHttpEx.StatusCode.Value;
+                if (statusCode >= 400 && statusCode < 500)
+                {
+                    return false; // Client error - don't retry
+                }
+            }
+            return true;
+        }
+
+        // Check message for "403" or "Forbidden" as fallback
+        var message = ex.Message + (ex.InnerException?.Message ?? "");
+        if (message.Contains("403") || message.Contains("Forbidden") ||
+            message.Contains("401") || message.Contains("Unauthorized"))
+        {
+            return false; // Auth/permission error - don't retry
+        }
+
+        // Retry on other transient errors (timeouts, network issues, 5xx)
+        return true;
     }
 
     public IReadOnlyList<string> GetSupportedChains() => ChainEndpoints.Keys.ToList();
