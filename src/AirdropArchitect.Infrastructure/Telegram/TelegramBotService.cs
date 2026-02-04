@@ -13,6 +13,7 @@ public class TelegramBotService : ITelegramBotService
 {
     private readonly ITelegramBotClient _bot;
     private readonly IUserService _userService;
+    private readonly IBlockchainService _blockchainService;
     private readonly ILogger<TelegramBotService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -23,10 +24,12 @@ public class TelegramBotService : ITelegramBotService
     public TelegramBotService(
         ITelegramBotClient bot,
         IUserService userService,
+        IBlockchainService blockchainService,
         ILogger<TelegramBotService> logger)
     {
         _bot = bot;
         _userService = userService;
+        _blockchainService = blockchainService;
         _logger = logger;
     }
 
@@ -202,21 +205,124 @@ public class TelegramBotService : ITelegramBotService
             return;
         }
 
+        // Detect chain and check if EVM
+        var chain = DetectChain(address);
+        if (chain == "solana")
+        {
+            await _bot.SendMessage(
+                chatId,
+                $"Solana support coming soon! `{ShortenAddress(address)}`\n\n" +
+                "Currently supporting: Ethereum, Arbitrum, Optimism, Base, Polygon",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+            return;
+        }
+
         var statusMsg = await _bot.SendMessage(
             chatId,
-            "Scanning wallet for airdrops...",
+            "Scanning wallet across EVM chains...",
             cancellationToken: ct);
 
-        // TODO: Implement actual eligibility checking in Phase 2
-        await _bot.EditMessageText(
-            chatId,
-            statusMsg.Id,
-            $"Scanned `{ShortenAddress(address)}`\n\n" +
-            "_Eligibility checking coming soon!_\n\n" +
-            "Track this wallet with /track to get alerts.",
-            parseMode: ParseMode.Markdown,
-            cancellationToken: ct);
+        try
+        {
+            // Fetch data from multiple chains in parallel
+            var chains = new[] { "ethereum", "arbitrum", "optimism", "base", "polygon" };
+            var balanceTasks = chains.Select(c => SafeGetBalanceAsync(address, c, ct)).ToArray();
+            var activityTasks = chains.Select(c => SafeGetActivityAsync(address, c, ct)).ToArray();
+
+            await Task.WhenAll(balanceTasks);
+            await Task.WhenAll(activityTasks);
+
+            var balances = balanceTasks.Select(t => t.Result).Where(b => b != null).ToList();
+            var activities = activityTasks.Select(t => t.Result).Where(a => a != null).ToList();
+
+            // Build response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"*Wallet Scan: `{ShortenAddress(address)}`*\n");
+
+            // Show balances
+            response.AppendLine("*Balances:*");
+            var hasBalance = false;
+            foreach (var balance in balances.Where(b => b!.BalanceInEth > 0.0001m))
+            {
+                hasBalance = true;
+                var symbol = GetNativeSymbol(balance!.Chain);
+                response.AppendLine($"  {balance.Chain}: {balance.BalanceInEth:F4} {symbol}");
+            }
+            if (!hasBalance)
+            {
+                response.AppendLine("  _No significant balances found_");
+            }
+
+            // Show activity
+            response.AppendLine("\n*On-chain Activity:*");
+            var hasActivity = false;
+            foreach (var activity in activities.Where(a => a!.HasActivity))
+            {
+                hasActivity = true;
+                response.AppendLine($"  {activity!.Chain}: {activity.TransactionCount} txns");
+            }
+            if (!hasActivity)
+            {
+                response.AppendLine("  _No on-chain activity found_");
+            }
+
+            // Eligibility hints (coming soon)
+            response.AppendLine("\n*Airdrop Eligibility:*");
+            response.AppendLine("  _Full eligibility checking coming soon!_");
+
+            response.AppendLine($"\nTrack this wallet with /track to get alerts.");
+
+            await _bot.EditMessageText(
+                chatId,
+                statusMsg.Id,
+                response.ToString(),
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking wallet {Address}", address);
+            await _bot.EditMessageText(
+                chatId,
+                statusMsg.Id,
+                $"Error scanning wallet. Please try again later.\n\n`{ex.Message}`",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+        }
     }
+
+    private async Task<WalletBalance?> SafeGetBalanceAsync(string address, string chain, CancellationToken ct)
+    {
+        try
+        {
+            return await _blockchainService.GetNativeBalanceAsync(address, chain, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get balance for {Address} on {Chain}", address, chain);
+            return null;
+        }
+    }
+
+    private async Task<WalletActivity?> SafeGetActivityAsync(string address, string chain, CancellationToken ct)
+    {
+        try
+        {
+            return await _blockchainService.GetWalletActivityAsync(address, chain, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get activity for {Address} on {Chain}", address, chain);
+            return null;
+        }
+    }
+
+    private static string GetNativeSymbol(string chain) => chain.ToLowerInvariant() switch
+    {
+        "polygon" => "MATIC",
+        _ => "ETH"
+    };
 
     private async Task HandlePointsCommandAsync(
         long chatId,
