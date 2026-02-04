@@ -8,9 +8,9 @@
 ## Current State
 
 **Phase:** 1 - Foundation
-**Week:** 3
+**Week:** 4
 **Last Updated:** 2026-02-03
-**Last Session Focus:** Stripe payment integration (Task 3.2)
+**Last Session Focus:** Cosmos DB service layer (Task 4.2)
 
 ---
 
@@ -48,6 +48,8 @@ When starting a new session, Claude should:
 | Task 3.1: Alchemy API | 2026-02-03 | AlchemyService + IBlockchainService, multi-chain support |
 | PR #6 merged | 2026-02-03 | Alchemy blockchain service integration |
 | Task 3.2: Stripe integration | 2026-02-03 | IPaymentService, StripeService, webhook function |
+| PR #7 merged | 2026-02-03 | Stripe payment integration with Telegram deep links |
+| Task 4.2: Cosmos DB service | 2026-02-03 | CosmosDbService base class + CosmosDbUserService |
 
 ---
 
@@ -55,7 +57,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #7 | Awaiting merge | Stripe payment integration |
+| PR #8 | Awaiting merge | Cosmos DB user service for persistent storage |
 
 ---
 
@@ -96,11 +98,11 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #7** - Stripe payment integration
-2. **Test Stripe checkout** - Run bot locally, test /upgrade command flow
-3. **Configure Stripe webhook** - Set up webhook URL in Stripe Dashboard for local testing (`stripe listen --forward-to localhost:7071/api/payments/stripe/webhook`)
-4. **Week 4: Cosmos DB service layer** - Implement persistent storage for users
-5. **Task 3.3: Coinbase Commerce** - If user has created account, add crypto payment option
+1. **Merge PR #8** - Cosmos DB user service
+2. **Test Cosmos DB persistence** - Add COSMOS_CONNECTION_STRING to local.settings.json, verify users persist
+3. **Configure Stripe webhook** - Set up webhook URL in Stripe Dashboard for local testing
+4. **Task 3.3: Coinbase Commerce** - If user has created account, add crypto payment option
+5. **Phase 2: Eligibility checking** - Implement actual airdrop eligibility logic
 6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
 ---
@@ -125,9 +127,9 @@ When starting a new session, Claude should:
 - [ ] **Task 3.3:** Coinbase Commerce configured ⚠️ HUMAN
 
 ### Week 4: Core Models & Database
-- [ ] **Task 4.1:** Core models created (User, Airdrop, PointsProgram)
-- [ ] **Task 4.2:** Cosmos DB service layer implemented
-- [ ] **Task 4.3:** User service with CRUD operations
+- [x] **Task 4.1:** Core models created (User, Airdrop, PointsProgram) - completed in Week 2
+- [x] **Task 4.2:** Cosmos DB service layer implemented (PR #8)
+- [x] **Task 4.3:** User service with CRUD operations (PR #8)
 
 ### Legal Baseline (Required Before Beta Launch)
 - [ ] **Task L.1:** Draft Terms of Service with liability disclaimers ⚠️ HUMAN
@@ -164,6 +166,27 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-03 (Session 7)
+**Focus:** Cosmos DB service layer (Week 4)
+**What happened:**
+- Merged PR #7 (Stripe payment integration) - user confirmed payment success flow working
+- Created CosmosDbService base class with common CRUD operations:
+  - GetByIdAsync, UpsertAsync, CreateAsync, ReplaceAsync, DeleteAsync
+  - QueryAsync with parameterized queries
+  - Built-in RU charge logging for monitoring
+- Implemented CosmosDbUserService:
+  - Full IUserService implementation using Cosmos DB
+  - Query-based lookup for Telegram ID (since it's not the partition key)
+  - Duplicate wallet prevention
+- Updated Program.cs DI:
+  - Conditionally uses CosmosDbUserService when COSMOS_CONNECTION_STRING is set
+  - Falls back to InMemoryUserService for local dev without Azure
+- Created PR #8
+
+**Outcome:** Task 4.2 and 4.3 complete, users will persist across app restarts
+
+---
 
 ### Session: 2026-02-03 (Session 6)
 **Focus:** Stripe payment integration (Task 3.2)
