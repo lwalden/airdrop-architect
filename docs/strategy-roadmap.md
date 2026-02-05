@@ -577,11 +577,15 @@ public class EligibilityService
 5. ✅ Create Telegram bot via BotFather
 6. ✅ Create Stripe account
 7. ✅ Create Coinbase Commerce account
-8. ⚠️ Draft Terms of Service (before beta launch)
-9. ⚠️ Draft Privacy Policy (before beta launch)
-10. ⚠️ Consult attorney on MSB/AML requirements
-11. 🔄 Implement geo-restriction service (OFAC compliance)
-12. 🔄 Set up i18n infrastructure (locale files, string externalization)
+8. ✅ Draft Terms of Service (boilerplate created)
+9. ✅ Draft Privacy Policy (boilerplate created, GDPR/CCPA compliant)
+10. ✅ MiCA regulatory analysis (does NOT apply - informational service only)
+11. ✅ Cookie Policy created (EU requirement for web dashboard)
+12. ✅ Data Subject Rights page created (GDPR/CCPA compliance)
+13. ⚠️ Replace placeholders in legal docs and attorney review
+14. 🔄 Implement geo-restriction service (OFAC compliance)
+15. 🔄 Set up i18n infrastructure (locale files, string externalization)
+16. 🔄 Implement cookie consent banner (web dashboard)
 
 ### Week 1-2 Development
 
