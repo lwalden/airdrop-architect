@@ -68,6 +68,11 @@
 3. 📊 API + Webhook System - For developers and integrations
 4. 📊 White-label licensing - For wallets wanting to embed
 
+**Phase 4 Features (Months 13+):**
+1. 🌍 Localization - Spanish, Portuguese, Chinese translations
+2. 🌍 Regional Expansion - Evaluate lifting geo-restrictions as regulations evolve
+3. 🌍 Multi-language ToS/Privacy Policy
+
 ### 1.4 Points Meta: The New Airdrop Paradigm
 
 **Why This Matters:**
@@ -365,7 +370,42 @@ public class EligibilityService
 | Free alternatives | High | Low | Differentiate on accuracy, UX, and premium features |
 | Data scraping of our criteria DB | Medium | Medium | Rate limiting, watermarking data, legal ToS restrictions |
 
-### 3.4 Technical Debt Checkpoints
+### 3.4 Geographic Scope and Compliance
+
+**MVP Target Markets:** US, EU, UK, Canada, Australia, Singapore (English-only)
+
+**OFAC-Blocked Countries (Mandatory):**
+| Country | Sanctions Type |
+|---------|---------------|
+| Iran | Comprehensive |
+| North Korea | Comprehensive |
+| Syria | Comprehensive |
+| Cuba | Comprehensive |
+| Russia | Significant restrictions |
+| Belarus | Significant restrictions |
+| Venezuela | Significant restrictions |
+| Afghanistan | Partial |
+| Algeria | Crypto banned (July 2025) |
+
+**Implementation:**
+- IP-based geo-detection at API gateway level
+- ToS self-declaration ("I am not located in a restricted jurisdiction")
+- Store user country code for compliance audit trail
+- Configurable blocklist (not hardcoded) for easy updates
+
+**Why Not US-Only:**
+- Crypto is inherently global; US-only limits growth unnecessarily
+- EU MiCA regulation explicitly exempts information services
+- Our service is non-custodial (no token handling) = lower regulatory risk
+- English covers vast majority of crypto users worldwide
+
+**Internationalization Strategy:**
+- MVP: English-only, but code architected for i18n from Day 1
+- All user-facing strings externalized to locale files
+- Phase 4+: Add translations based on user demand (Spanish, Portuguese, Chinese priority)
+- Legal docs require translation when expanding to non-English markets
+
+### 3.5 Technical Debt Checkpoints
 
 - **End of Phase 1:** Review and refactor any shortcuts taken during rapid development
 - **End of Phase 2:** Load test eligibility checking at 10x expected volume, security review
@@ -540,6 +580,8 @@ public class EligibilityService
 8. ⚠️ Draft Terms of Service (before beta launch)
 9. ⚠️ Draft Privacy Policy (before beta launch)
 10. ⚠️ Consult attorney on MSB/AML requirements
+11. 🔄 Implement geo-restriction service (OFAC compliance)
+12. 🔄 Set up i18n infrastructure (locale files, string externalization)
 
 ### Week 1-2 Development
 

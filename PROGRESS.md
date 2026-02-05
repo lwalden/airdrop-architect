@@ -7,10 +7,10 @@
 
 ## Current State
 
-**Phase:** 1 - Foundation (COMPLETE)
-**Week:** 4
-**Last Updated:** 2026-02-04
-**Last Session Focus:** Coinbase Commerce integration (Task 3.3)
+**Phase:** 2 - Core Features (IN PROGRESS)
+**Week:** 5
+**Last Updated:** 2026-02-05
+**Last Session Focus:** Internationalization strategy and geographic restrictions
 
 ---
 
@@ -52,6 +52,13 @@ When starting a new session, Claude should:
 | Task 4.2: Cosmos DB service | 2026-02-03 | CosmosDbService base class + CosmosDbUserService |
 | PR #8 merged | 2026-02-04 | Cosmos DB user service, tested with Azure |
 | Task 3.3: Coinbase Commerce | 2026-02-04 | One-time crypto payments for wallet reveals |
+| PR #9 merged | 2026-02-04 | Coinbase Commerce integration |
+| Phase 2: Models & interfaces | 2026-02-04 | IAirdropService, IPointsService, Airdrop, PointsProgram models |
+| Phase 2: Cosmos DB services | 2026-02-04 | CosmosDbAirdropService, CosmosDbPointsService |
+| Phase 2: Hyperliquid integration | 2026-02-04 | HyperliquidPointsProvider for points API |
+| Phase 2: /check command | 2026-02-04 | Now shows real airdrop eligibility data |
+| Phase 2: /points command | 2026-02-04 | Now fetches real points from Hyperliquid |
+| ADR-011: i18n & Geo-Restrictions | 2026-02-05 | Hybrid approach: English MVP, i18n-ready architecture |
 
 ---
 
@@ -59,7 +66,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #9 | Awaiting merge | Coinbase Commerce integration |
+| PR #10 | Awaiting merge | Phase 2 eligibility and points tracking |
 
 ---
 
@@ -101,14 +108,18 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #9** - Coinbase Commerce integration
-2. **Test crypto payments** - Add COINBASE_COMMERCE_API_KEY to local.settings.json
-3. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-4. **Phase 2: Eligibility checking** - Implement actual airdrop eligibility logic
-5. **Phase 2: Points tracking** - Integrate with points programs (Hyperliquid, EigenLayer, etc.)
-6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
+1. **Merge PR #10** - Phase 2 eligibility and points tracking
+2. **Implement IGeoRestrictionService** - OFAC compliance (see ADR-011)
+3. **Implement ILocalizationService** - String externalization for i18n-ready architecture
+4. **Create locale files structure** - `/src/AirdropArchitect.Core/Locales/en/`
+5. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
+6. **Test /check and /points commands** - Verify real data is returned
+7. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
+8. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+9. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
-**Phase 1 Foundation is now COMPLETE!** All infrastructure is in place.
+**Phase 2 Core Features in progress!** Eligibility checking and Hyperliquid points tracking implemented.
+**i18n Strategy decided:** English MVP, architected for future localization (see ADR-011).
 
 ---
 
@@ -171,6 +182,29 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-05 (Session 9)
+**Focus:** Internationalization strategy and geographic restrictions
+**What happened:**
+- Resumed session: created PR #10 for Phase 2 eligibility/points tracking
+- User requested research on localization for Telegram bot and international service viability
+- Researched:
+  - Telegram Bot API localization (does NOT auto-translate, we must implement)
+  - OFAC sanctions compliance requirements for US-based SaaS
+  - Crypto regulatory landscape (MiCA, Algeria ban, etc.)
+  - Airdrop geo-restriction patterns (70% of airdrops block US users)
+- Created ADR-011: Internationalization and Geographic Restrictions
+  - Decision: Hybrid approach - Option 2 (US+EU+English) for MVP, architected for Option 3 (global)
+  - OFAC-blocked countries defined: IR, KP, SY, CU, RU, BY, VE, AF, DZ
+  - i18n-ready code patterns documented
+- Updated documentation:
+  - DECISIONS.md: Added ADR-011 with full implementation requirements
+  - strategy-roadmap.md: Added Geographic Scope section (3.4), Phase 4 localization features
+  - CLAUDE.md: Added i18n coding guidelines section with patterns and examples
+
+**Outcome:** Clear strategy for MVP geographic scope with extensible architecture for future global expansion.
+
+---
 
 ### Session: 2026-02-04 (Session 8)
 **Focus:** Coinbase Commerce integration (Task 3.3)
