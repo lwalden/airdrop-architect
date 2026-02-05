@@ -10,7 +10,7 @@
 **Phase:** 2 - Core Features (IN PROGRESS)
 **Week:** 5
 **Last Updated:** 2026-02-05
-**Last Session Focus:** Created PR #10 for Phase 2 eligibility and points tracking
+**Last Session Focus:** Legal documents and compliance strategy (ADR-012)
 
 ---
 
@@ -58,6 +58,15 @@ When starting a new session, Claude should:
 | Phase 2: Hyperliquid integration | 2026-02-04 | HyperliquidPointsProvider for points API |
 | Phase 2: /check command | 2026-02-04 | Now shows real airdrop eligibility data |
 | Phase 2: /points command | 2026-02-04 | Now fetches real points from Hyperliquid |
+| ADR-011: i18n & Geo-Restrictions | 2026-02-05 | Hybrid approach: English MVP, i18n-ready architecture |
+| PR #10 merged | 2026-02-05 | Phase 2 eligibility and points tracking |
+| PR #11 merged | 2026-02-05 | i18n and geo-restriction strategy |
+| Legal: Terms of Service | 2026-02-05 | Boilerplate created (docs/terms-of-service.md) |
+| Legal: Privacy Policy | 2026-02-05 | Boilerplate created (docs/privacy-policy.md) |
+| Legal: Cookie Policy | 2026-02-05 | Created (docs/cookie-policy.md) |
+| Legal: Data Subject Rights | 2026-02-05 | Created (docs/data-subject-rights.md) |
+| Legal: EU/UK Addendum | 2026-02-05 | Created (docs/privacy-policy-eu-uk-addendum.md) |
+| ADR-012: Legal/Compliance | 2026-02-05 | MiCA does NOT apply, documents strategy |
 
 ---
 
@@ -65,7 +74,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #10 | Awaiting merge | Phase 2 eligibility and points tracking |
+| Legal document finalization | In progress | Replace placeholders, attorney review |
 
 ---
 
@@ -92,9 +101,12 @@ When starting a new session, Claude should:
 | Stripe webhook setup | User needs to configure webhook URL in Stripe Dashboard (for production) | 2026-02-03 |
 | ~~Coinbase Commerce~~ | ~~User needs to create Coinbase Commerce account~~ | ~~2026-02-02~~ ✅ DONE |
 | Coinbase webhook setup | User needs to configure webhook URL in Coinbase Commerce dashboard | 2026-02-04 |
-| **Legal: Terms of Service** | User needs to draft/review ToS with "not financial advice" disclaimer | 2026-02-02 |
-| **Legal: Privacy Policy** | User needs to draft GDPR/CCPA-compliant privacy policy | 2026-02-02 |
-| **Legal: MSB/AML consultation** | User needs to consult attorney on Success Fee regulatory implications | 2026-02-02 |
+| ~~Legal: Terms of Service~~ | ~~User needs to draft/review ToS~~ | ~~2026-02-02~~ ✅ Boilerplate created |
+| ~~Legal: Privacy Policy~~ | ~~User needs to draft GDPR/CCPA-compliant privacy policy~~ | ~~2026-02-02~~ ✅ Boilerplate created |
+| ~~Legal: MiCA Analysis~~ | ~~Determine if CASP license needed~~ | ✅ MiCA does NOT apply (ADR-012) |
+| **Legal: Placeholder replacement** | User needs to fill in [DATE], [EMAIL], etc. in legal docs | 2026-02-05 |
+| **Legal: Attorney review** | User needs attorney to review legal docs (esp. crypto disclaimers) | 2026-02-05 |
+| Legal: Privacy email setup | User needs to set up privacy@airdroparchitect.com | 2026-02-05 |
 
 ## Future Enhancements (Phase 2)
 
@@ -107,14 +119,18 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #10** - Phase 2 eligibility and points tracking
-2. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
-3. **Test /check and /points commands** - Verify real data is returned
-4. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
-5. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
+1. **Implement IGeoRestrictionService** - OFAC compliance (see ADR-011)
+2. **Implement ILocalizationService** - String externalization for i18n-ready architecture
+3. **Create locale files structure** - `/src/AirdropArchitect.Core/Locales/en/`
+4. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
+5. **Test /check and /points commands** - Verify real data is returned
+6. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
+7. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+8. **Add legal links to Telegram /start** - Link to ToS and Privacy Policy
 
-**Phase 2 Core Features in progress!** Eligibility checking and Hyperliquid points tracking implemented.
+**Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
+**Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).
+**Next:** Implement geo-restriction and i18n services, then web dashboard Phase 4.
 
 ---
 
@@ -143,10 +159,16 @@ When starting a new session, Claude should:
 - [x] **Task 4.3:** User service with CRUD operations (PR #8)
 
 ### Legal Baseline (Required Before Beta Launch)
-- [ ] **Task L.1:** Draft Terms of Service with liability disclaimers ⚠️ HUMAN
-- [ ] **Task L.2:** Draft Privacy Policy (GDPR/CCPA compliant) ⚠️ HUMAN
-- [ ] **Task L.3:** Legal consult on MSB/AML requirements for Success Fees ⚠️ HUMAN
-- [ ] **Task L.4:** Add legal links to Telegram bot /start message
+- [x] **Task L.1:** Draft Terms of Service with liability disclaimers ✅ Boilerplate created
+- [x] **Task L.2:** Draft Privacy Policy (GDPR/CCPA compliant) ✅ Boilerplate created
+- [x] **Task L.3:** MiCA/regulatory analysis ✅ MiCA does NOT apply (ADR-012)
+- [x] **Task L.4:** Cookie Policy (EU requirement) ✅ Created
+- [x] **Task L.5:** Data Subject Rights page (GDPR/CCPA) ✅ Created
+- [ ] **Task L.6:** Replace placeholders in legal docs ⚠️ HUMAN
+- [ ] **Task L.7:** Attorney review of legal docs ⚠️ HUMAN
+- [ ] **Task L.8:** Set up privacy email address ⚠️ HUMAN
+- [ ] **Task L.9:** Add legal links to Telegram bot /start message
+- [ ] **Task L.10:** Implement cookie consent banner (web dashboard)
 
 ---
 

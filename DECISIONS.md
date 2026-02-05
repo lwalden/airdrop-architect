@@ -423,3 +423,78 @@ When a significant decision is made during development, add it here with:
 - [ ] RTL support consideration (Arabic, Hebrew)
 
 ---
+
+### ADR-012: Legal and Regulatory Compliance Strategy
+**Date:** 2026-02-05
+**Status:** Decided
+
+**Context:** Need to determine regulatory requirements for operating a crypto airdrop tracking service internationally, specifically regarding EU MiCA regulation and privacy laws (GDPR, CCPA).
+
+**Key Finding: MiCA Does NOT Apply**
+
+After analysis, EU Markets in Crypto-Assets Regulation (MiCA) does NOT apply to Airdrop Architect because:
+- MiCA regulates Crypto-Asset Service Providers (CASPs): exchanges, custody providers, trading platforms, brokers
+- Airdrop Architect is an **informational/tracker tool** that:
+  - Does NOT custody crypto assets
+  - Does NOT execute trades or transmit orders
+  - Does NOT exchange crypto for fiat or other crypto
+  - Does NOT provide investment advice (explicitly disclaimed)
+
+**Analogy:** Airdrop Architect is like a stock screener or portfolio tracker - an information aggregation service, not a regulated financial service. **No CASP license required.**
+
+**What IS Required:**
+
+| Requirement | Scope | Status |
+|-------------|-------|--------|
+| Terms of Service | All users | ✅ Boilerplate created |
+| Privacy Policy | All users | ✅ Boilerplate created |
+| Cookie Policy | Web dashboard (EU required) | ✅ Boilerplate created |
+| Cookie Consent Banner | Web dashboard | 🔄 Implementation needed |
+| Data Subject Rights page | GDPR/CCPA compliance | ✅ Created |
+| EU/UK Privacy Addendum | EU/UK users | ✅ Created (to merge into Privacy Policy) |
+
+**Legal Documents Created (docs/ folder):**
+1. `terms-of-service.md` - Core usage terms + crypto disclaimers
+2. `privacy-policy.md` - Data collection/use disclosure (GDPR/CCPA compliant)
+3. `cookie-policy.md` - Cookie usage disclosure for web dashboard
+4. `data-subject-rights.md` - How users exercise privacy rights
+5. `privacy-policy-eu-uk-addendum.md` - Additional GDPR sections to merge
+
+**Document Strategy:** Single comprehensive documents with regional sections (industry standard) - no separate versions needed.
+
+**Implementation Checklist:**
+
+Before Launch:
+- [ ] Replace all `[PLACEHOLDER]` values in legal documents (DATE, EMAIL, etc.)
+- [ ] Merge EU/UK Addendum into main Privacy Policy
+- [ ] Set up privacy@airdroparchitect.com email address
+- [ ] Have attorney review (especially crypto disclaimers)
+- [ ] Add legal links to Telegram bot /start message
+- [ ] Add legal links to web dashboard footer
+
+Web Dashboard Requirements:
+- [ ] Implement cookie consent banner (equal Accept/Reject buttons)
+- [ ] Block non-essential cookies until consent
+- [ ] Record consent timestamps for GDPR audit trail
+- [ ] Implement data export functionality (portability)
+- [ ] Implement account deletion workflow
+
+**Recommended CMP (Consent Management Platforms) for Cookie Banner:**
+- Cookiebot (free tier available)
+- CookieYes (free tier available)
+- Osano
+
+**Key Disclaimers in ToS:**
+- "NOT FINANCIAL, INVESTMENT, OR TAX ADVICE" (Section 3)
+- No guarantees on accuracy of airdrop information
+- Not liable for missed airdrops or incorrect eligibility
+- Cryptocurrency risks acknowledgment
+
+**Rationale:**
+- Single document approach reduces maintenance burden
+- Boilerplate documents provide solid foundation for attorney review
+- MiCA non-applicability simplifies EU market entry significantly
+- Cookie consent required by ePrivacy Directive regardless of MiCA
+- Data subject rights page improves GDPR compliance posture
+
+---
