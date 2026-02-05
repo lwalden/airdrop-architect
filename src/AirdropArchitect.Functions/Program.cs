@@ -57,6 +57,26 @@ builder.Services.AddSingleton<IPaymentService>(sp =>
     return new StripeService(stripeSecretKey, stripeWebhookSecret, stripeProductConfig, userService, logger);
 });
 
+// Crypto Payment Service (Coinbase Commerce) - Optional
+var coinbaseApiKey = Environment.GetEnvironmentVariable("COINBASE_COMMERCE_API_KEY");
+var coinbaseWebhookSecret = Environment.GetEnvironmentVariable("COINBASE_COMMERCE_WEBHOOK_SECRET") ?? "";
+
+if (!string.IsNullOrEmpty(coinbaseApiKey))
+{
+    var coinbaseProductConfig = new CoinbaseProductConfig
+    {
+        RevealPriceUsd = 5.00m,
+        LifetimePriceUsd = 0m // Not available yet
+    };
+
+    builder.Services.AddSingleton<ICryptoPaymentService>(sp =>
+    {
+        var userService = sp.GetRequiredService<IUserService>();
+        var logger = sp.GetRequiredService<ILogger<CoinbaseCommerceService>>();
+        return new CoinbaseCommerceService(coinbaseApiKey, coinbaseWebhookSecret, coinbaseProductConfig, userService, logger);
+    });
+}
+
 // User Service - Use Cosmos DB if connection string available, otherwise in-memory
 var cosmosConnectionString = Environment.GetEnvironmentVariable("COSMOS_CONNECTION_STRING");
 var cosmosDatabaseName = Environment.GetEnvironmentVariable("COSMOS_DATABASE_NAME") ?? "airdrop-db";

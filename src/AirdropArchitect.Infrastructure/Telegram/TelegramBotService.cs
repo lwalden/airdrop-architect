@@ -15,6 +15,7 @@ public class TelegramBotService : ITelegramBotService
     private readonly IUserService _userService;
     private readonly IBlockchainService _blockchainService;
     private readonly IPaymentService _paymentService;
+    private readonly ICryptoPaymentService? _cryptoPaymentService;
     private readonly ILogger<TelegramBotService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -27,12 +28,14 @@ public class TelegramBotService : ITelegramBotService
         IUserService userService,
         IBlockchainService blockchainService,
         IPaymentService paymentService,
-        ILogger<TelegramBotService> logger)
+        ILogger<TelegramBotService> logger,
+        ICryptoPaymentService? cryptoPaymentService = null)
     {
         _bot = bot;
         _userService = userService;
         _blockchainService = blockchainService;
         _paymentService = paymentService;
+        _cryptoPaymentService = cryptoPaymentService;
         _logger = logger;
     }
 
@@ -652,8 +655,20 @@ public class TelegramBotService : ITelegramBotService
         }
         else if (data.StartsWith("reveal:"))
         {
-            var address = data.Split(':')[1];
-            await HandleRevealCallbackAsync(callback, chatId, telegramId, address, ct);
+            // reveal:<method>:<address> or reveal:<address> for legacy
+            var parts = data.Split(':');
+            if (parts.Length == 3)
+            {
+                var method = parts[1];
+                var address = parts[2];
+                await HandleRevealCallbackAsync(callback, chatId, telegramId, address, method, ct);
+            }
+            else if (parts.Length == 2)
+            {
+                // Legacy format - show payment options
+                var address = parts[1];
+                await ShowRevealPaymentOptionsAsync(chatId, address, ct);
+            }
         }
     }
 
@@ -718,11 +733,41 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
+    private async Task ShowRevealPaymentOptionsAsync(
+        long chatId,
+        string walletAddress,
+        CancellationToken ct)
+    {
+        var buttons = new List<InlineKeyboardButton[]>
+        {
+            new[] { InlineKeyboardButton.WithCallbackData("Pay with Card ($5)", $"reveal:card:{walletAddress}") }
+        };
+
+        // Only show crypto option if service is configured
+        if (_cryptoPaymentService != null)
+        {
+            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("Pay with Crypto ($5)", $"reveal:crypto:{walletAddress}") });
+        }
+
+        var keyboard = new InlineKeyboardMarkup(buttons);
+
+        await _bot.SendMessage(
+            chatId,
+            $"<b>Unlock Wallet Details</b>\n\n" +
+            $"Wallet: <code>{ShortenAddress(walletAddress)}</code>\n" +
+            $"Price: $5 one-time\n\n" +
+            $"Choose your payment method:",
+            parseMode: ParseMode.Html,
+            replyMarkup: keyboard,
+            cancellationToken: ct);
+    }
+
     private async Task HandleRevealCallbackAsync(
         CallbackQuery callback,
         long chatId,
         long telegramId,
         string walletAddress,
+        string paymentMethod,
         CancellationToken ct)
     {
         try
@@ -746,28 +791,58 @@ public class TelegramBotService : ITelegramBotService
             var successUrl = $"{baseUrl}?start=reveal_success";
             var cancelUrl = $"{baseUrl}?start=reveal_cancelled";
 
-            var session = await _paymentService.CreateRevealCheckoutAsync(
-                user.Id,
-                walletAddress,
-                successUrl,
-                cancelUrl,
-                ct);
+            string checkoutUrl;
+            string paymentMethodDisplay;
 
-            // Use HTML mode to avoid Markdown corrupting URLs with underscores
+            if (paymentMethod == "crypto" && _cryptoPaymentService != null)
+            {
+                var metadata = new Dictionary<string, string>
+                {
+                    ["wallet_address"] = walletAddress
+                };
+
+                var charge = await _cryptoPaymentService.CreateChargeAsync(
+                    user.Id,
+                    "reveal",
+                    metadata,
+                    successUrl,
+                    ct);
+
+                checkoutUrl = charge.HostedUrl;
+                paymentMethodDisplay = "Crypto (BTC, ETH, USDC, etc.)";
+
+                _logger.LogInformation(
+                    "Generated crypto reveal checkout for user {UserId}, wallet {Wallet}, charge {ChargeCode}",
+                    user.Id, ShortenAddress(walletAddress), charge.ChargeCode);
+            }
+            else
+            {
+                var session = await _paymentService.CreateRevealCheckoutAsync(
+                    user.Id,
+                    walletAddress,
+                    successUrl,
+                    cancelUrl,
+                    ct);
+
+                checkoutUrl = session.Url;
+                paymentMethodDisplay = "Card";
+
+                _logger.LogInformation(
+                    "Generated card reveal checkout for user {UserId}, wallet {Wallet}",
+                    user.Id, ShortenAddress(walletAddress));
+            }
+
             await _bot.SendMessage(
                 chatId,
                 $"<b>Unlock Wallet Details</b>\n\n" +
                 $"Wallet: <code>{ShortenAddress(walletAddress)}</code>\n" +
-                $"Price: $5 one-time\n\n" +
-                $"Click the link below to unlock:\n" +
-                $"{session.Url}\n\n" +
-                $"<i>Link expires in 24 hours</i>",
+                $"Price: $5 one-time\n" +
+                $"Payment: {paymentMethodDisplay}\n\n" +
+                $"Click the link below to complete your purchase:\n" +
+                $"{checkoutUrl}\n\n" +
+                $"<i>Link expires in 1 hour</i>",
                 parseMode: ParseMode.Html,
                 cancellationToken: ct);
-
-            _logger.LogInformation(
-                "Generated reveal checkout link for user {UserId}, wallet {Wallet}",
-                user.Id, ShortenAddress(walletAddress));
         }
         catch (Exception ex)
         {
