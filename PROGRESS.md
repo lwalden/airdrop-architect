@@ -7,10 +7,10 @@
 
 ## Current State
 
-**Phase:** 1 - Foundation
+**Phase:** 1 - Foundation (COMPLETE)
 **Week:** 4
-**Last Updated:** 2026-02-03
-**Last Session Focus:** Cosmos DB service layer (Task 4.2)
+**Last Updated:** 2026-02-04
+**Last Session Focus:** Coinbase Commerce integration (Task 3.3)
 
 ---
 
@@ -50,6 +50,8 @@ When starting a new session, Claude should:
 | Task 3.2: Stripe integration | 2026-02-03 | IPaymentService, StripeService, webhook function |
 | PR #7 merged | 2026-02-03 | Stripe payment integration with Telegram deep links |
 | Task 4.2: Cosmos DB service | 2026-02-03 | CosmosDbService base class + CosmosDbUserService |
+| PR #8 merged | 2026-02-04 | Cosmos DB user service, tested with Azure |
+| Task 3.3: Coinbase Commerce | 2026-02-04 | One-time crypto payments for wallet reveals |
 
 ---
 
@@ -57,7 +59,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #8 | Awaiting merge | Cosmos DB user service for persistent storage |
+| PR #9 | Awaiting merge | Coinbase Commerce integration |
 
 ---
 
@@ -82,7 +84,8 @@ When starting a new session, Claude should:
 |------|---------------|------------|
 | ~~Stripe account~~ | ~~User needs to create Stripe account and products~~ | ~~2026-02-02~~ ✅ DONE |
 | Stripe webhook setup | User needs to configure webhook URL in Stripe Dashboard (for production) | 2026-02-03 |
-| Coinbase Commerce | User needs to create Coinbase Commerce account | 2026-02-02 |
+| ~~Coinbase Commerce~~ | ~~User needs to create Coinbase Commerce account~~ | ~~2026-02-02~~ ✅ DONE |
+| Coinbase webhook setup | User needs to configure webhook URL in Coinbase Commerce dashboard | 2026-02-04 |
 | **Legal: Terms of Service** | User needs to draft/review ToS with "not financial advice" disclaimer | 2026-02-02 |
 | **Legal: Privacy Policy** | User needs to draft GDPR/CCPA-compliant privacy policy | 2026-02-02 |
 | **Legal: MSB/AML consultation** | User needs to consult attorney on Success Fee regulatory implications | 2026-02-02 |
@@ -98,12 +101,14 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #8** - Cosmos DB user service
-2. **Test Cosmos DB persistence** - Add COSMOS_CONNECTION_STRING to local.settings.json, verify users persist
-3. **Configure Stripe webhook** - Set up webhook URL in Stripe Dashboard for local testing
-4. **Task 3.3: Coinbase Commerce** - If user has created account, add crypto payment option
-5. **Phase 2: Eligibility checking** - Implement actual airdrop eligibility logic
+1. **Merge PR #9** - Coinbase Commerce integration
+2. **Test crypto payments** - Add COINBASE_COMMERCE_API_KEY to local.settings.json
+3. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+4. **Phase 2: Eligibility checking** - Implement actual airdrop eligibility logic
+5. **Phase 2: Points tracking** - Integrate with points programs (Hyperliquid, EigenLayer, etc.)
 6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
+
+**Phase 1 Foundation is now COMPLETE!** All infrastructure is in place.
 
 ---
 
@@ -124,7 +129,7 @@ When starting a new session, Claude should:
 ### Week 3: External Service Setup
 - [x] **Task 3.1:** Alchemy API connected (PR #6)
 - [x] **Task 3.2:** Stripe integration complete (PR #7)
-- [ ] **Task 3.3:** Coinbase Commerce configured ⚠️ HUMAN
+- [x] **Task 3.3:** Coinbase Commerce configured (PR #9)
 
 ### Week 4: Core Models & Database
 - [x] **Task 4.1:** Core models created (User, Airdrop, PointsProgram) - completed in Week 2
@@ -166,6 +171,30 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-04 (Session 8)
+**Focus:** Coinbase Commerce integration (Task 3.3)
+**What happened:**
+- User merged PR #8 and tested Cosmos DB persistence successfully
+- User provided Coinbase Commerce API key
+- Clarified design: Coinbase Commerce for one-time payments only, Stripe for subscriptions
+- Created ICryptoPaymentService interface for one-time crypto payments
+- Implemented CoinbaseCommerceService:
+  - Creates charges via Coinbase Commerce API
+  - Webhook signature verification (HMAC-SHA256)
+  - Handles charge:confirmed to grant wallet reveals
+  - Extensible for future products (lifetime membership, etc.)
+- Created CoinbaseWebhookFunction at /api/payments/coinbase/webhook
+- Updated TelegramBotService:
+  - Shows payment method selection for wallet reveals
+  - "Pay with Card" and "Pay with Crypto" buttons
+  - Crypto option only appears if service is configured
+- Updated Program.cs DI (optional, only when COINBASE_COMMERCE_API_KEY present)
+- Created PR #9
+
+**Outcome:** Phase 1 Foundation COMPLETE! All infrastructure in place for Phase 2.
+
+---
 
 ### Session: 2026-02-03 (Session 7)
 **Focus:** Cosmos DB service layer (Week 4)
