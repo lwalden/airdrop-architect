@@ -16,6 +16,8 @@ public class TelegramBotService : ITelegramBotService
     private readonly IBlockchainService _blockchainService;
     private readonly IPaymentService _paymentService;
     private readonly ICryptoPaymentService? _cryptoPaymentService;
+    private readonly IAirdropService? _airdropService;
+    private readonly IPointsService? _pointsService;
     private readonly ILogger<TelegramBotService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -29,13 +31,17 @@ public class TelegramBotService : ITelegramBotService
         IBlockchainService blockchainService,
         IPaymentService paymentService,
         ILogger<TelegramBotService> logger,
-        ICryptoPaymentService? cryptoPaymentService = null)
+        ICryptoPaymentService? cryptoPaymentService = null,
+        IAirdropService? airdropService = null,
+        IPointsService? pointsService = null)
     {
         _bot = bot;
         _userService = userService;
         _blockchainService = blockchainService;
         _paymentService = paymentService;
         _cryptoPaymentService = cryptoPaymentService;
+        _airdropService = airdropService;
+        _pointsService = pointsService;
         _logger = logger;
     }
 
@@ -372,9 +378,62 @@ public class TelegramBotService : ITelegramBotService
                 response.AppendLine("  _No on-chain activity found_");
             }
 
-            // Eligibility hints (coming soon)
+            // Airdrop eligibility
             response.AppendLine("\n*Airdrop Eligibility:*");
-            response.AppendLine("  _Full eligibility checking coming soon!_");
+            if (_airdropService != null)
+            {
+                try
+                {
+                    var eligibility = await _airdropService.CheckEligibilityAsync(address, ct);
+                    if (eligibility.Count > 0)
+                    {
+                        var eligible = eligibility.Where(e => e.IsEligible).ToList();
+                        var notEligible = eligibility.Where(e => !e.IsEligible).ToList();
+
+                        if (eligible.Count > 0)
+                        {
+                            response.AppendLine($"  *{eligible.Count} Airdrop(s) Available:*");
+                            foreach (var airdrop in eligible.Take(5))
+                            {
+                                var statusEmoji = airdrop.HasClaimed ? "(claimed)" : "(unclaimed)";
+                                var amount = airdrop.AllocationAmount.HasValue
+                                    ? $" ~{airdrop.AllocationAmount:N0} {airdrop.TokenSymbol}"
+                                    : "";
+                                response.AppendLine($"    - {airdrop.AirdropName}{amount} {statusEmoji}");
+                                if (airdrop.ClaimDeadline.HasValue && !airdrop.HasClaimed)
+                                {
+                                    var daysLeft = (airdrop.ClaimDeadline.Value - DateTime.UtcNow).Days;
+                                    if (daysLeft <= 7)
+                                    {
+                                        response.AppendLine($"      _Deadline in {daysLeft} days!_");
+                                    }
+                                }
+                            }
+                            if (eligible.Count > 5)
+                            {
+                                response.AppendLine($"    _...and {eligible.Count - 5} more_");
+                            }
+                        }
+                        else
+                        {
+                            response.AppendLine("  _No eligible airdrops found_");
+                        }
+                    }
+                    else
+                    {
+                        response.AppendLine("  _No active airdrop programs to check_");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error checking eligibility for {Address}", address);
+                    response.AppendLine("  _Could not check eligibility_");
+                }
+            }
+            else
+            {
+                response.AppendLine("  _Eligibility checking not configured_");
+            }
 
             response.AppendLine($"\nTrack this wallet with /track to get alerts.");
 
@@ -461,15 +520,80 @@ public class TelegramBotService : ITelegramBotService
             "Fetching points balances...",
             cancellationToken: ct);
 
-        // TODO: Implement actual points checking in Phase 2
-        await _bot.EditMessageText(
-            chatId,
-            statusMsg.Id,
-            $"Points for `{ShortenAddress(address)}`\n\n" +
-            "_Points tracking coming soon!_\n\n" +
-            "We'll support Hyperliquid, EigenLayer, Blast, and more.",
-            parseMode: ParseMode.Markdown,
-            cancellationToken: ct);
+        try
+        {
+            if (_pointsService == null)
+            {
+                await _bot.EditMessageText(
+                    chatId,
+                    statusMsg.Id,
+                    $"Points for `{ShortenAddress(address)}`\n\n" +
+                    "_Points tracking not configured_",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+                return;
+            }
+
+            // Refresh points from APIs
+            var pointsBalances = await _pointsService.RefreshPointsAsync(address, ct);
+
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"*Points for `{ShortenAddress(address)}`*\n");
+
+            if (pointsBalances.Count > 0)
+            {
+                foreach (var balance in pointsBalances.OrderByDescending(b => b.Points))
+                {
+                    response.AppendLine($"*{balance.ProtocolName}*");
+                    response.AppendLine($"  {balance.PointsName}: {balance.Points:N0}");
+
+                    if (balance.Rank.HasValue)
+                    {
+                        response.AppendLine($"  Rank: #{balance.Rank:N0}");
+                    }
+
+                    if (balance.PointsChange24h.HasValue && balance.PointsChange24h != 0)
+                    {
+                        var changeSign = balance.PointsChange24h > 0 ? "+" : "";
+                        response.AppendLine($"  24h: {changeSign}{balance.PointsChange24h:N0}");
+                    }
+
+                    if (balance.EstimatedValueUsd.HasValue)
+                    {
+                        response.AppendLine($"  Est. Value: ~${balance.EstimatedValueUsd:N2}");
+                    }
+
+                    response.AppendLine();
+                }
+
+                response.AppendLine($"_Last updated: {DateTime.UtcNow:HH:mm} UTC_");
+            }
+            else
+            {
+                response.AppendLine("_No points found for this wallet._\n");
+                response.AppendLine("Supported protocols:");
+                response.AppendLine("- Hyperliquid");
+                response.AppendLine("- More coming soon...");
+            }
+
+            await _bot.EditMessageText(
+                chatId,
+                statusMsg.Id,
+                response.ToString(),
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching points for {Address}", address);
+            await _bot.EditMessageText(
+                chatId,
+                statusMsg.Id,
+                $"Error fetching points for `{ShortenAddress(address)}`.\n\n" +
+                "Please try again later.",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+        }
     }
 
     private async Task HandleTrackCommandAsync(
