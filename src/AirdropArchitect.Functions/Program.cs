@@ -11,6 +11,7 @@ using AirdropArchitect.Infrastructure.Services;
 using AirdropArchitect.Infrastructure.Blockchain;
 using AirdropArchitect.Infrastructure.Payments;
 using AirdropArchitect.Infrastructure.Data;
+using AirdropArchitect.Infrastructure.Points;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -101,6 +102,26 @@ if (!string.IsNullOrEmpty(cosmosConnectionString))
         var cosmosClient = sp.GetRequiredService<CosmosClient>();
         var logger = sp.GetRequiredService<ILogger<CosmosDbUserService>>();
         return new CosmosDbUserService(cosmosClient, cosmosDatabaseName, logger);
+    });
+
+    // Airdrop Service (requires Cosmos DB)
+    builder.Services.AddSingleton<IAirdropService>(sp =>
+    {
+        var cosmosClient = sp.GetRequiredService<CosmosClient>();
+        var logger = sp.GetRequiredService<ILogger<CosmosDbAirdropService>>();
+        return new CosmosDbAirdropService(cosmosClient, cosmosDatabaseName, logger);
+    });
+
+    // Points Providers
+    builder.Services.AddSingleton<IPointsProvider, HyperliquidPointsProvider>();
+
+    // Points Service (requires Cosmos DB)
+    builder.Services.AddSingleton<IPointsService>(sp =>
+    {
+        var cosmosClient = sp.GetRequiredService<CosmosClient>();
+        var providers = sp.GetServices<IPointsProvider>();
+        var logger = sp.GetRequiredService<ILogger<CosmosDbPointsService>>();
+        return new CosmosDbPointsService(cosmosClient, cosmosDatabaseName, providers, logger);
     });
 }
 else
