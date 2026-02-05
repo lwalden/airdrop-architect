@@ -7,10 +7,10 @@
 
 ## Current State
 
-**Phase:** 1 - Foundation (COMPLETE)
-**Week:** 4
-**Last Updated:** 2026-02-04
-**Last Session Focus:** Coinbase Commerce integration (Task 3.3)
+**Phase:** 2 - Core Features (IN PROGRESS)
+**Week:** 5
+**Last Updated:** 2026-02-05
+**Last Session Focus:** Created PR #10 for Phase 2 eligibility and points tracking
 
 ---
 
@@ -52,6 +52,12 @@ When starting a new session, Claude should:
 | Task 4.2: Cosmos DB service | 2026-02-03 | CosmosDbService base class + CosmosDbUserService |
 | PR #8 merged | 2026-02-04 | Cosmos DB user service, tested with Azure |
 | Task 3.3: Coinbase Commerce | 2026-02-04 | One-time crypto payments for wallet reveals |
+| PR #9 merged | 2026-02-04 | Coinbase Commerce integration |
+| Phase 2: Models & interfaces | 2026-02-04 | IAirdropService, IPointsService, Airdrop, PointsProgram models |
+| Phase 2: Cosmos DB services | 2026-02-04 | CosmosDbAirdropService, CosmosDbPointsService |
+| Phase 2: Hyperliquid integration | 2026-02-04 | HyperliquidPointsProvider for points API |
+| Phase 2: /check command | 2026-02-04 | Now shows real airdrop eligibility data |
+| Phase 2: /points command | 2026-02-04 | Now fetches real points from Hyperliquid |
 
 ---
 
@@ -59,7 +65,7 @@ When starting a new session, Claude should:
 
 | Task | Status | Notes |
 |------|--------|-------|
-| PR #9 | Awaiting merge | Coinbase Commerce integration |
+| PR #10 | Awaiting merge | Phase 2 eligibility and points tracking |
 
 ---
 
@@ -101,14 +107,14 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #9** - Coinbase Commerce integration
-2. **Test crypto payments** - Add COINBASE_COMMERCE_API_KEY to local.settings.json
-3. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-4. **Phase 2: Eligibility checking** - Implement actual airdrop eligibility logic
-5. **Phase 2: Points tracking** - Integrate with points programs (Hyperliquid, EigenLayer, etc.)
+1. **Merge PR #10** - Phase 2 eligibility and points tracking
+2. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
+3. **Test /check and /points commands** - Verify real data is returned
+4. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
+5. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
 6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
-**Phase 1 Foundation is now COMPLETE!** All infrastructure is in place.
+**Phase 2 Core Features in progress!** Eligibility checking and Hyperliquid points tracking implemented.
 
 ---
 
