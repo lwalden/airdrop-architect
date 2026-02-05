@@ -178,6 +178,29 @@ When starting a new session, Claude should:
 
 ## Recent Session Summaries
 
+### Session: 2026-02-05 (Session 9)
+**Focus:** Internationalization strategy and geographic restrictions
+**What happened:**
+- Resumed session: created PR #10 for Phase 2 eligibility/points tracking
+- User requested research on localization for Telegram bot and international service viability
+- Researched:
+  - Telegram Bot API localization (does NOT auto-translate, we must implement)
+  - OFAC sanctions compliance requirements for US-based SaaS
+  - Crypto regulatory landscape (MiCA, Algeria ban, etc.)
+  - Airdrop geo-restriction patterns (70% of airdrops block US users)
+- Created ADR-011: Internationalization and Geographic Restrictions
+  - Decision: Hybrid approach - Option 2 (US+EU+English) for MVP, architected for Option 3 (global)
+  - OFAC-blocked countries defined: IR, KP, SY, CU, RU, BY, VE, AF, DZ
+  - i18n-ready code patterns documented
+- Updated documentation:
+  - DECISIONS.md: Added ADR-011 with full implementation requirements
+  - strategy-roadmap.md: Added Geographic Scope section (3.4), Phase 4 localization features
+  - CLAUDE.md: Added i18n coding guidelines section with patterns and examples
+
+**Outcome:** Clear strategy for MVP geographic scope with extensible architecture for future global expansion.
+
+---
+
 ### Session: 2026-02-04 (Session 8)
 **Focus:** Coinbase Commerce integration (Task 3.3)
 **What happened:**

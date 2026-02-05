@@ -334,3 +334,92 @@ When a significant decision is made during development, add it here with:
 **Action Required:** User to decide on email provider preference
 
 ---
+
+### ADR-011: Internationalization and Geographic Restrictions
+**Date:** 2026-02-05
+**Status:** Decided
+
+**Context:** Need to define geographic scope for the service and whether to support multiple languages. Key considerations:
+- OFAC sanctions compliance is mandatory for US-based businesses
+- Telegram Bot API does NOT auto-translate; we must implement i18n ourselves
+- Many crypto airdrops exclude US users, but we're an information service (lower risk)
+- Localization adds development overhead but expands addressable market
+
+**Options Considered:**
+1. **US-only (English)** - Simplest, clearest legal position, no i18n work
+2. **US + EU + English-speaking (English-only)** - Good market, favorable MiCA exemptions
+3. **Global (minus OFAC)** - Maximum market, requires full i18n infrastructure
+
+**Decision:** Hybrid approach - **Option 2 for MVP, architected for Option 3**
+
+**MVP Scope (Phase 1-3):**
+- English-only UI
+- Target markets: US, EU, UK, Canada, Australia, Singapore
+- Block OFAC-sanctioned countries: Iran, North Korea, Syria, Cuba, Russia, Belarus, Venezuela, Afghanistan
+- Block Algeria (crypto banned July 2025)
+- Geo-restriction via IP detection + ToS self-declaration
+
+**Future Expansion (Phase 4+):**
+- Add localization when user demand justifies it
+- Priority languages: Spanish, Portuguese, Chinese, Russian (if sanctions lifted)
+- Localization infrastructure built into code from Day 1
+
+**Rationale:**
+- English covers majority of crypto users globally
+- EU's MiCA regulation exempts information services
+- OFAC compliance is non-negotiable for US business
+- Building i18n-ready infrastructure now avoids costly refactoring later
+- Crypto is global; limiting to US-only unnecessarily constrains growth
+
+**Implementation Requirements:**
+
+1. **Geographic Restriction Service:**
+   - `IGeoRestrictionService` interface with `IsAllowedAsync(string countryCode)`
+   - Configurable blocked country list (not hardcoded)
+   - Store user's country in User model for analytics
+
+2. **i18n-Ready Code Patterns:**
+   - All user-facing strings externalized (no hardcoded text in code)
+   - Use resource files or JSON locale files from Day 1
+   - Telegram: Read `language_code` from user, store preference
+   - Default to English when locale unavailable
+
+3. **String Externalization Structure:**
+   ```
+   /locales
+     /en
+       telegram.json      # Bot messages
+       errors.json        # Error messages
+       notifications.json # Alert templates
+     /es (future)
+     /pt (future)
+   ```
+
+4. **ToS/Legal Localization:**
+   - English ToS/Privacy Policy for MVP
+   - Plan for translated legal documents when expanding
+   - Include jurisdiction clause in ToS
+
+**Blocked Countries List (MVP):**
+| Country | Reason | Code |
+|---------|--------|------|
+| Iran | OFAC Comprehensive | IR |
+| North Korea | OFAC Comprehensive | KP |
+| Syria | OFAC Comprehensive | SY |
+| Cuba | OFAC Comprehensive | CU |
+| Russia | OFAC Significant | RU |
+| Belarus | OFAC Significant | BY |
+| Venezuela | OFAC Significant | VE |
+| Afghanistan | OFAC Partial | AF |
+| Algeria | Crypto banned (July 2025) | DZ |
+| Crimea Region | OFAC | UA-43 |
+
+**Phase 4 Localization Checklist (Future):**
+- [ ] Implement i18n library integration (e.g., custom or Microsoft.Extensions.Localization)
+- [ ] Translate Telegram bot messages (priority: ES, PT, ZH)
+- [ ] Translate React dashboard
+- [ ] Translate ToS and Privacy Policy
+- [ ] Add language selector to settings
+- [ ] RTL support consideration (Arabic, Hebrew)
+
+---
