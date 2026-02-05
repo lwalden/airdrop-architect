@@ -10,7 +10,7 @@
 **Phase:** 2 - Core Features (IN PROGRESS)
 **Week:** 5
 **Last Updated:** 2026-02-05
-**Last Session Focus:** Internationalization strategy and geographic restrictions
+**Last Session Focus:** Created PR #10 for Phase 2 eligibility and points tracking
 
 ---
 
@@ -58,7 +58,6 @@ When starting a new session, Claude should:
 | Phase 2: Hyperliquid integration | 2026-02-04 | HyperliquidPointsProvider for points API |
 | Phase 2: /check command | 2026-02-04 | Now shows real airdrop eligibility data |
 | Phase 2: /points command | 2026-02-04 | Now fetches real points from Hyperliquid |
-| ADR-011: i18n & Geo-Restrictions | 2026-02-05 | Hybrid approach: English MVP, i18n-ready architecture |
 
 ---
 
@@ -109,17 +108,13 @@ When starting a new session, Claude should:
 ## Next Session Should
 
 1. **Merge PR #10** - Phase 2 eligibility and points tracking
-2. **Implement IGeoRestrictionService** - OFAC compliance (see ADR-011)
-3. **Implement ILocalizationService** - String externalization for i18n-ready architecture
-4. **Create locale files structure** - `/src/AirdropArchitect.Core/Locales/en/`
-5. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
-6. **Test /check and /points commands** - Verify real data is returned
-7. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
-8. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-9. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
+2. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
+3. **Test /check and /points commands** - Verify real data is returned
+4. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
+5. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+6. **Reminder:** Legal tasks (ToS, Privacy Policy) should be completed before beta launch
 
 **Phase 2 Core Features in progress!** Eligibility checking and Hyperliquid points tracking implemented.
-**i18n Strategy decided:** English MVP, architected for future localization (see ADR-011).
 
 ---
 
