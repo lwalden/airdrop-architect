@@ -132,4 +132,20 @@ else
 
 builder.Services.AddSingleton<ITelegramBotService, TelegramBotService>();
 
+// Geo-Restriction Service (OFAC compliance)
+builder.Services.AddSingleton<IGeoRestrictionService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<GeoRestrictionService>>();
+    return new GeoRestrictionService(logger);
+});
+
+// Localization Service (i18n)
+builder.Services.AddSingleton<ILocalizationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<LocalizationService>>();
+    // Locales folder is deployed alongside the function app
+    var localesPath = Path.Combine(AppContext.BaseDirectory, "Locales");
+    return new LocalizationService(logger, localesPath);
+});
+
 builder.Build().Run();

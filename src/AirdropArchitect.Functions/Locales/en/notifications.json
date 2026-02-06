@@ -1,0 +1,12 @@
+{
+  "NewAirdropAvailable": "*New Airdrop Available!*\n\nYour wallet `{0}` is eligible for the *{1}* airdrop!\n\nEstimated value: ~${2}\nClaim deadline: {3}\n\nClaim now: {4}",
+  "ClaimDeadlineApproaching": "*Claim Deadline Alert!*\n\nThe *{0}* airdrop for wallet `{1}` expires in *{2} days*!\n\nDon't miss out - claim before {3}.\n\nClaim now: {4}",
+  "ClaimDeadlineFinal": "*URGENT: Last Day to Claim!*\n\nThe *{0}* airdrop for wallet `{1}` expires *today*!\n\nClaim now before it's too late: {2}",
+  "PointsChange": "*Points Update*\n\nYour *{0}* points for wallet `{1}` have changed:\n\nPrevious: {2:N0}\nCurrent: {3:N0}\nChange: {4}{5:N0}\n\nView details: {6}",
+  "PointsMilestone": "*Milestone Reached!*\n\nCongratulations! Your *{0}* points for wallet `{1}` have reached *{2:N0}*!\n\nKeep it up!",
+  "SubscriptionExpiringSoon": "*Subscription Expiring Soon*\n\nYour *{0}* subscription expires in *{1} days* on {2}.\n\nRenew now to keep your premium features: /upgrade",
+  "SubscriptionExpired": "*Subscription Expired*\n\nYour *{0}* subscription has expired.\n\nYou've been downgraded to the Free tier. Upgrade anytime with /upgrade",
+  "SubscriptionRenewed": "*Subscription Renewed*\n\nYour *{0}* subscription has been renewed!\n\nNext renewal: {1}\n\nThank you for your continued support!",
+  "WelcomeBack": "*Welcome Back!*\n\nWe've missed you! Here's what's new:\n\n{0}\n\nCheck your wallets with /check or /points",
+  "WeeklyDigest": "*Weekly Digest*\n\nHere's your weekly summary:\n\n*Wallets Tracked:* {0}\n*Total Points:* {1:N0}\n*Pending Airdrops:* {2}\n*Upcoming Deadlines:* {3}\n\nKeep checking for new opportunities!"
+}
