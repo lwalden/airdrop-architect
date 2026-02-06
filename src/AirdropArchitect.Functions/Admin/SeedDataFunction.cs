@@ -30,7 +30,7 @@ public class SeedDataFunction
 
     [Function("SeedData")]
     public async Task<HttpResponseData> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "admin/seed")]
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "ops/seed")]
         HttpRequestData req,
         CancellationToken ct)
     {
