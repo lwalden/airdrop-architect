@@ -34,7 +34,7 @@
   "FetchingPoints": "Fetching points balances...",
   "PointsHeader": "*Points for `{0}`*\n",
   "PointsNotConfigured": "_Points tracking not configured_",
-  "NoPointsFound": "_No points found for this wallet._\n\nSupported protocols:\n- Hyperliquid\n- More coming soon...",
+  "NoPointsFound": "_No points found for this wallet._\n\nSupported protocols:\n- Hyperliquid\n- EigenLayer\n- Ethena (Sats)\n- More coming soon...",
   "PointsLastUpdated": "_Last updated: {0:HH:mm} UTC_",
   "Rank": "  Rank: #{0:N0}",
   "Change24h": "  24h: {0}{1:N0}",
