@@ -18,6 +18,8 @@ public class TelegramBotService : ITelegramBotService
     private readonly ICryptoPaymentService? _cryptoPaymentService;
     private readonly IAirdropService? _airdropService;
     private readonly IPointsService? _pointsService;
+    private readonly ILocalizationService _localizer;
+    private readonly IGeoRestrictionService _geoRestriction;
     private readonly ILogger<TelegramBotService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -30,6 +32,8 @@ public class TelegramBotService : ITelegramBotService
         IUserService userService,
         IBlockchainService blockchainService,
         IPaymentService paymentService,
+        ILocalizationService localizer,
+        IGeoRestrictionService geoRestriction,
         ILogger<TelegramBotService> logger,
         ICryptoPaymentService? cryptoPaymentService = null,
         IAirdropService? airdropService = null,
@@ -39,6 +43,8 @@ public class TelegramBotService : ITelegramBotService
         _userService = userService;
         _blockchainService = blockchainService;
         _paymentService = paymentService;
+        _localizer = localizer;
+        _geoRestriction = geoRestriction;
         _cryptoPaymentService = cryptoPaymentService;
         _airdropService = airdropService;
         _pointsService = pointsService;
@@ -92,7 +98,29 @@ public class TelegramBotService : ITelegramBotService
             return;
         }
 
-        await _userService.EnsureUserExistsAsync(telegramId, ct);
+        var user = await _userService.EnsureUserExistsAsync(telegramId, ct);
+
+        // Capture Telegram's language code for localization
+        var lang = message.From?.LanguageCode ?? user.PreferredLanguage;
+
+        // Update stored language preference if Telegram provides a different one
+        if (!string.IsNullOrEmpty(message.From?.LanguageCode)
+            && user.PreferredLanguage != message.From.LanguageCode)
+        {
+            user.PreferredLanguage = message.From.LanguageCode;
+            await _userService.UpdateUserAsync(user, ct);
+        }
+
+        // Geo-restriction check (effective when country detection is available)
+        if (!string.IsNullOrEmpty(user.CountryCode) && !_geoRestriction.IsCountryAllowed(user.CountryCode))
+        {
+            _logger.LogWarning("Blocked user {TelegramId} from country {Country}", telegramId, user.CountryCode);
+            await _bot.SendMessage(
+                chatId,
+                _localizer.Get("errors", "CountryRestricted", lang),
+                cancellationToken: ct);
+            return;
+        }
 
         var command = text.Split(' ')[0].ToLowerInvariant();
         var args = text.Split(' ').Skip(1).ToArray();
@@ -100,33 +128,33 @@ public class TelegramBotService : ITelegramBotService
         switch (command)
         {
             case "/start":
-                await HandleStartCommandAsync(chatId, telegramId, args, ct);
+                await HandleStartCommandAsync(chatId, telegramId, args, lang, ct);
                 break;
             case "/check":
-                await HandleCheckCommandAsync(chatId, telegramId, args, ct);
+                await HandleCheckCommandAsync(chatId, telegramId, args, lang, ct);
                 break;
             case "/points":
-                await HandlePointsCommandAsync(chatId, telegramId, args, ct);
+                await HandlePointsCommandAsync(chatId, telegramId, args, lang, ct);
                 break;
             case "/track":
-                await HandleTrackCommandAsync(chatId, telegramId, args, ct);
+                await HandleTrackCommandAsync(chatId, telegramId, args, lang, ct);
                 break;
             case "/wallets":
-                await HandleWalletsCommandAsync(chatId, telegramId, ct);
+                await HandleWalletsCommandAsync(chatId, telegramId, lang, ct);
                 break;
             case "/status":
-                await HandleStatusCommandAsync(chatId, telegramId, ct);
+                await HandleStatusCommandAsync(chatId, telegramId, lang, ct);
                 break;
             case "/upgrade":
-                await HandleUpgradeCommandAsync(chatId, ct);
+                await HandleUpgradeCommandAsync(chatId, lang, ct);
                 break;
             case "/help":
-                await SendHelpAsync(chatId, ct);
+                await SendHelpAsync(chatId, lang, ct);
                 break;
             default:
                 if (IsValidWalletAddress(text))
                 {
-                    await HandleCheckCommandAsync(chatId, telegramId, new[] { text }, ct);
+                    await HandleCheckCommandAsync(chatId, telegramId, new[] { text }, lang, ct);
                 }
                 break;
         }
@@ -136,6 +164,7 @@ public class TelegramBotService : ITelegramBotService
         long chatId,
         long telegramId,
         string[] args,
+        string? lang,
         CancellationToken ct)
     {
         // Check for deep link parameters (e.g., /start payment_success)
@@ -146,7 +175,7 @@ public class TelegramBotService : ITelegramBotService
             // Handle payment success callback
             if (param.StartsWith("payment_success"))
             {
-                await HandlePaymentSuccessAsync(chatId, telegramId, ct);
+                await HandlePaymentSuccessAsync(chatId, telegramId, lang, ct);
                 return;
             }
 
@@ -155,7 +184,7 @@ public class TelegramBotService : ITelegramBotService
             {
                 await _bot.SendMessage(
                     chatId,
-                    "Payment was cancelled. No worries - you can upgrade anytime with /upgrade",
+                    _localizer.Get("PaymentCancelled", lang),
                     cancellationToken: ct);
                 return;
             }
@@ -165,7 +194,7 @@ public class TelegramBotService : ITelegramBotService
             {
                 await _bot.SendMessage(
                     chatId,
-                    "Wallet details unlocked! Use /check with the wallet address to see full details.",
+                    _localizer.Get("RevealSuccess", lang),
                     cancellationToken: ct);
                 return;
             }
@@ -175,17 +204,21 @@ public class TelegramBotService : ITelegramBotService
             {
                 await _bot.SendMessage(
                     chatId,
-                    "Reveal purchase was cancelled.",
+                    _localizer.Get("RevealCancelled", lang),
                     cancellationToken: ct);
                 return;
             }
         }
 
         // Default: show welcome message
-        await SendWelcomeAsync(chatId, ct);
+        await SendWelcomeAsync(chatId, lang, ct);
     }
 
-    private async Task HandlePaymentSuccessAsync(long chatId, long telegramId, CancellationToken ct)
+    private async Task HandlePaymentSuccessAsync(
+        long chatId,
+        long telegramId,
+        string? lang,
+        CancellationToken ct)
     {
         var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
         var tier = user.SubscriptionTier;
@@ -196,9 +229,7 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                "<b>Payment Received!</b>\n\n" +
-                "Your subscription is being activated. This usually takes just a few seconds.\n\n" +
-                "Use /status to check your subscription status.",
+                _localizer.Get("PaymentReceived", lang),
                 parseMode: ParseMode.Html,
                 cancellationToken: ct);
             return;
@@ -207,84 +238,37 @@ public class TelegramBotService : ITelegramBotService
         var tierName = tier.ToUpperInvariant();
         var features = tier switch
         {
-            "tracker" => "• Track up to 10 wallets\n• Telegram alerts\n• Claim deadline reminders",
-            "architect" => "• Unlimited wallet tracking\n• Points dashboard\n• Path-to-eligibility tips\n• Sybil protection analyzer",
-            "api" => "• Everything in Architect\n• REST API access\n• Webhooks for automation",
+            "tracker" => _localizer.Get("TrackerFeatures", lang),
+            "architect" => _localizer.Get("ArchitectFeatures", lang),
+            "api" => _localizer.Get("ApiFeatures", lang),
             _ => ""
         };
 
         var expiresInfo = user.SubscriptionExpiresAt.HasValue
-            ? $"\n\nYour subscription renews on {user.SubscriptionExpiresAt:MMMM d, yyyy}"
+            ? _localizer.GetFormatted("SubscriptionRenews", lang, user.SubscriptionExpiresAt.Value)
             : "";
 
         await _bot.SendMessage(
             chatId,
-            $"<b>Welcome to {tierName}!</b>\n\n" +
-            $"Your subscription is now active.\n\n" +
-            $"<b>Your features:</b>\n{features}{expiresInfo}\n\n" +
-            $"<b>Quick start:</b>\n" +
-            $"• /check <code>0x...</code> - Check a wallet\n" +
-            $"• /track <code>0x...</code> - Start tracking\n" +
-            $"• /status - View your subscription\n\n" +
-            $"Thanks for supporting Airdrop Architect!",
+            _localizer.GetFormatted("SubscriptionWelcome", lang, tierName, features, expiresInfo),
             parseMode: ParseMode.Html,
             cancellationToken: ct);
     }
 
-    private async Task SendWelcomeAsync(long chatId, CancellationToken ct)
+    private async Task SendWelcomeAsync(long chatId, string? lang, CancellationToken ct)
     {
-        var welcome = """
-            *Welcome to Airdrop Architect!*
-
-            I help you find unclaimed airdrops and track points across your wallets.
-
-            *Quick Start:*
-            Just paste any wallet address to check for airdrops!
-
-            *Commands:*
-            /check `<address>` - Check for airdrops
-            /points `<address>` - Check points balances
-            /track `<address>` - Track wallet for alerts
-            /wallets - List your tracked wallets
-            /status - Your subscription status
-            /upgrade - Premium features
-            /help - Show all commands
-            """;
-
         await _bot.SendMessage(
             chatId,
-            welcome,
+            _localizer.Get("Welcome", lang),
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
     }
 
-    private async Task SendHelpAsync(long chatId, CancellationToken ct)
+    private async Task SendHelpAsync(long chatId, string? lang, CancellationToken ct)
     {
-        var help = """
-            *Airdrop Architect Commands*
-
-            *Checking Wallets:*
-            /check `0x...` - Check wallet for unclaimed airdrops
-            /points `0x...` - Check points balances (Hyperliquid, EigenLayer, etc.)
-
-            *Tracking:*
-            /track `0x...` - Add wallet to tracking
-            /untrack `0x...` - Remove wallet from tracking
-            /wallets - List your tracked wallets
-
-            *Account:*
-            /status - Your subscription status
-            /upgrade - View premium options
-            /alerts - Manage notification settings
-
-            *Tips:*
-            - You can just paste a wallet address directly
-            - Supports Ethereum, Arbitrum, Optimism, Base, Solana
-            """;
-
         await _bot.SendMessage(
             chatId,
-            help,
+            _localizer.Get("Help", lang),
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
     }
@@ -293,13 +277,14 @@ public class TelegramBotService : ITelegramBotService
         long chatId,
         long telegramId,
         string[] args,
+        string? lang,
         CancellationToken ct)
     {
         if (args.Length == 0)
         {
             await _bot.SendMessage(
                 chatId,
-                "Please provide a wallet address:\n`/check 0x123...abc`",
+                _localizer.Get("ProvideWalletCheck", lang),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
             return;
@@ -311,7 +296,7 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                "Invalid wallet address. Please check and try again.",
+                _localizer.Get("InvalidWalletAddress", lang),
                 cancellationToken: ct);
             return;
         }
@@ -322,8 +307,7 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                $"Solana support coming soon! `{ShortenAddress(address)}`\n\n" +
-                "Currently supporting: Ethereum, Arbitrum, Optimism, Base, Polygon",
+                _localizer.GetFormatted("SolanaComingSoon", lang, ShortenAddress(address)),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
             return;
@@ -331,7 +315,7 @@ public class TelegramBotService : ITelegramBotService
 
         var statusMsg = await _bot.SendMessage(
             chatId,
-            "Scanning wallet across EVM chains...",
+            _localizer.Get("ScanningWallet", lang),
             cancellationToken: ct);
 
         try
@@ -349,10 +333,10 @@ public class TelegramBotService : ITelegramBotService
 
             // Build response
             var response = new System.Text.StringBuilder();
-            response.AppendLine($"*Wallet Scan: `{ShortenAddress(address)}`*\n");
+            response.AppendLine(_localizer.GetFormatted("WalletScanHeader", lang, ShortenAddress(address)));
 
             // Show balances
-            response.AppendLine("*Balances:*");
+            response.AppendLine(_localizer.Get("Balances", lang));
             var hasBalance = false;
             foreach (var balance in balances.Where(b => b!.BalanceInEth > 0.0001m))
             {
@@ -362,11 +346,11 @@ public class TelegramBotService : ITelegramBotService
             }
             if (!hasBalance)
             {
-                response.AppendLine("  _No significant balances found_");
+                response.AppendLine(_localizer.Get("NoBalancesFound", lang));
             }
 
             // Show activity
-            response.AppendLine("\n*On-chain Activity:*");
+            response.AppendLine(_localizer.Get("OnChainActivity", lang));
             var hasActivity = false;
             foreach (var activity in activities.Where(a => a!.HasActivity))
             {
@@ -375,11 +359,11 @@ public class TelegramBotService : ITelegramBotService
             }
             if (!hasActivity)
             {
-                response.AppendLine("  _No on-chain activity found_");
+                response.AppendLine(_localizer.Get("NoActivityFound", lang));
             }
 
             // Airdrop eligibility
-            response.AppendLine("\n*Airdrop Eligibility:*");
+            response.AppendLine(_localizer.Get("AirdropEligibility", lang));
             if (_airdropService != null)
             {
                 try
@@ -388,11 +372,10 @@ public class TelegramBotService : ITelegramBotService
                     if (eligibility.Count > 0)
                     {
                         var eligible = eligibility.Where(e => e.IsEligible).ToList();
-                        var notEligible = eligibility.Where(e => !e.IsEligible).ToList();
 
                         if (eligible.Count > 0)
                         {
-                            response.AppendLine($"  *{eligible.Count} Airdrop(s) Available:*");
+                            response.AppendLine(_localizer.GetFormatted("AirdropsAvailable", lang, eligible.Count));
                             foreach (var airdrop in eligible.Take(5))
                             {
                                 var statusEmoji = airdrop.HasClaimed ? "(claimed)" : "(unclaimed)";
@@ -405,37 +388,37 @@ public class TelegramBotService : ITelegramBotService
                                     var daysLeft = (airdrop.ClaimDeadline.Value - DateTime.UtcNow).Days;
                                     if (daysLeft <= 7)
                                     {
-                                        response.AppendLine($"      _Deadline in {daysLeft} days!_");
+                                        response.AppendLine(_localizer.GetFormatted("DeadlineWarning", lang, daysLeft));
                                     }
                                 }
                             }
                             if (eligible.Count > 5)
                             {
-                                response.AppendLine($"    _...and {eligible.Count - 5} more_");
+                                response.AppendLine(_localizer.GetFormatted("AndMore", lang, eligible.Count - 5));
                             }
                         }
                         else
                         {
-                            response.AppendLine("  _No eligible airdrops found_");
+                            response.AppendLine(_localizer.Get("NoEligibleAirdrops", lang));
                         }
                     }
                     else
                     {
-                        response.AppendLine("  _No active airdrop programs to check_");
+                        response.AppendLine(_localizer.Get("NoActiveAirdrops", lang));
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error checking eligibility for {Address}", address);
-                    response.AppendLine("  _Could not check eligibility_");
+                    response.AppendLine(_localizer.Get("CouldNotCheckEligibility", lang));
                 }
             }
             else
             {
-                response.AppendLine("  _Eligibility checking not configured_");
+                response.AppendLine(_localizer.Get("EligibilityNotConfigured", lang));
             }
 
-            response.AppendLine($"\nTrack this wallet with /track to get alerts.");
+            response.AppendLine(_localizer.Get("TrackWalletPrompt", lang));
 
             await _bot.EditMessageText(
                 chatId,
@@ -450,7 +433,7 @@ public class TelegramBotService : ITelegramBotService
             await _bot.EditMessageText(
                 chatId,
                 statusMsg.Id,
-                $"Error scanning wallet. Please try again later.\n\n`{ex.Message}`",
+                _localizer.GetFormatted("ErrorScanningWallet", lang, ex.Message),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
         }
@@ -492,13 +475,14 @@ public class TelegramBotService : ITelegramBotService
         long chatId,
         long telegramId,
         string[] args,
+        string? lang,
         CancellationToken ct)
     {
         if (args.Length == 0)
         {
             await _bot.SendMessage(
                 chatId,
-                "Please provide a wallet address:\n`/points 0x123...abc`",
+                _localizer.Get("ProvideWalletPoints", lang),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
             return;
@@ -510,14 +494,14 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                "Invalid wallet address. Please check and try again.",
+                _localizer.Get("InvalidWalletAddress", lang),
                 cancellationToken: ct);
             return;
         }
 
         var statusMsg = await _bot.SendMessage(
             chatId,
-            "Fetching points balances...",
+            _localizer.Get("FetchingPoints", lang),
             cancellationToken: ct);
 
         try
@@ -527,8 +511,8 @@ public class TelegramBotService : ITelegramBotService
                 await _bot.EditMessageText(
                     chatId,
                     statusMsg.Id,
-                    $"Points for `{ShortenAddress(address)}`\n\n" +
-                    "_Points tracking not configured_",
+                    _localizer.GetFormatted("PointsHeader", lang, ShortenAddress(address)) +
+                    _localizer.Get("PointsNotConfigured", lang),
                     parseMode: ParseMode.Markdown,
                     cancellationToken: ct);
                 return;
@@ -538,7 +522,7 @@ public class TelegramBotService : ITelegramBotService
             var pointsBalances = await _pointsService.RefreshPointsAsync(address, ct);
 
             var response = new System.Text.StringBuilder();
-            response.AppendLine($"*Points for `{ShortenAddress(address)}`*\n");
+            response.AppendLine(_localizer.GetFormatted("PointsHeader", lang, ShortenAddress(address)));
 
             if (pointsBalances.Count > 0)
             {
@@ -549,31 +533,28 @@ public class TelegramBotService : ITelegramBotService
 
                     if (balance.Rank.HasValue)
                     {
-                        response.AppendLine($"  Rank: #{balance.Rank:N0}");
+                        response.AppendLine(_localizer.GetFormatted("Rank", lang, balance.Rank.Value));
                     }
 
                     if (balance.PointsChange24h.HasValue && balance.PointsChange24h != 0)
                     {
                         var changeSign = balance.PointsChange24h > 0 ? "+" : "";
-                        response.AppendLine($"  24h: {changeSign}{balance.PointsChange24h:N0}");
+                        response.AppendLine(_localizer.GetFormatted("Change24h", lang, changeSign, balance.PointsChange24h.Value));
                     }
 
                     if (balance.EstimatedValueUsd.HasValue)
                     {
-                        response.AppendLine($"  Est. Value: ~${balance.EstimatedValueUsd:N2}");
+                        response.AppendLine(_localizer.GetFormatted("EstimatedValue", lang, balance.EstimatedValueUsd.Value));
                     }
 
                     response.AppendLine();
                 }
 
-                response.AppendLine($"_Last updated: {DateTime.UtcNow:HH:mm} UTC_");
+                response.AppendLine(_localizer.GetFormatted("PointsLastUpdated", lang, DateTime.UtcNow));
             }
             else
             {
-                response.AppendLine("_No points found for this wallet._\n");
-                response.AppendLine("Supported protocols:");
-                response.AppendLine("- Hyperliquid");
-                response.AppendLine("- More coming soon...");
+                response.AppendLine(_localizer.Get("NoPointsFound", lang));
             }
 
             await _bot.EditMessageText(
@@ -589,8 +570,7 @@ public class TelegramBotService : ITelegramBotService
             await _bot.EditMessageText(
                 chatId,
                 statusMsg.Id,
-                $"Error fetching points for `{ShortenAddress(address)}`.\n\n" +
-                "Please try again later.",
+                _localizer.GetFormatted("ErrorFetchingPoints", lang, ShortenAddress(address)),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
         }
@@ -600,13 +580,14 @@ public class TelegramBotService : ITelegramBotService
         long chatId,
         long telegramId,
         string[] args,
+        string? lang,
         CancellationToken ct)
     {
         if (args.Length == 0)
         {
             await _bot.SendMessage(
                 chatId,
-                "Please provide a wallet address:\n`/track 0x123...abc`",
+                _localizer.Get("ProvideWalletTrack", lang),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
             return;
@@ -618,7 +599,7 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                "Invalid wallet address.",
+                _localizer.Get("InvalidWalletAddress", lang),
                 cancellationToken: ct);
             return;
         }
@@ -629,7 +610,7 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                $"You're already tracking `{ShortenAddress(address)}`",
+                _localizer.GetFormatted("AlreadyTrackingWallet", lang, ShortenAddress(address)),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
             return;
@@ -647,11 +628,7 @@ public class TelegramBotService : ITelegramBotService
 
         await _bot.SendMessage(
             chatId,
-            $"Now tracking `{ShortenAddress(address)}` ({chain})\n\n" +
-            "You'll receive alerts when:\n" +
-            "- New airdrops become available\n" +
-            "- Claim deadlines approach\n" +
-            "- Points balances change significantly",
+            _localizer.GetFormatted("NowTrackingWallet", lang, ShortenAddress(address), chain),
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
     }
@@ -659,6 +636,7 @@ public class TelegramBotService : ITelegramBotService
     private async Task HandleWalletsCommandAsync(
         long chatId,
         long telegramId,
+        string? lang,
         CancellationToken ct)
     {
         var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
@@ -667,8 +645,7 @@ public class TelegramBotService : ITelegramBotService
         {
             await _bot.SendMessage(
                 chatId,
-                "You're not tracking any wallets yet.\n\n" +
-                "Use /track `<address>` to start tracking a wallet.",
+                _localizer.Get("NoTrackedWallets", lang),
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
             return;
@@ -680,7 +657,7 @@ public class TelegramBotService : ITelegramBotService
 
         await _bot.SendMessage(
             chatId,
-            $"*Your Tracked Wallets ({user.Wallets.Count}):*\n\n{walletList}",
+            _localizer.GetFormatted("YourTrackedWallets", lang, user.Wallets.Count, walletList),
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
     }
@@ -688,63 +665,26 @@ public class TelegramBotService : ITelegramBotService
     private async Task HandleStatusCommandAsync(
         long chatId,
         long telegramId,
+        string? lang,
         CancellationToken ct)
     {
         var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
 
         var tier = user.SubscriptionTier;
-        var emoji = tier switch
-        {
-            "architect" => "star",
-            "tracker" => "satellite",
-            "api" => "electric_plug",
-            _ => "free"
-        };
-
         var tierDisplay = tier.ToUpperInvariant();
         var expiryInfo = user.SubscriptionExpiresAt.HasValue
-            ? $"\nExpires: {user.SubscriptionExpiresAt:yyyy-MM-dd}"
+            ? _localizer.GetFormatted("Expires", lang, user.SubscriptionExpiresAt.Value)
             : "";
 
         await _bot.SendMessage(
             chatId,
-            $"*Your Status*\n\n" +
-            $"Plan: *{tierDisplay}*{expiryInfo}\n" +
-            $"Tracked wallets: {user.Wallets.Count}\n" +
-            $"Referral code: `{user.ReferralCode}`\n\n" +
-            "Use /upgrade to unlock more features!",
+            _localizer.GetFormatted("YourStatus", lang, tierDisplay, expiryInfo, user.Wallets.Count, user.ReferralCode),
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
     }
 
-    private async Task HandleUpgradeCommandAsync(long chatId, CancellationToken ct)
+    private async Task HandleUpgradeCommandAsync(long chatId, string? lang, CancellationToken ct)
     {
-        var pricing = """
-            *Airdrop Architect Premium*
-
-            *FREE*
-            - Check 3 wallets/month
-            - Basic eligibility info
-
-            *TRACKER - $9/month*
-            - Track up to 10 wallets
-            - Telegram alerts
-            - Claim deadline reminders
-
-            *ARCHITECT - $29/month*
-            - Unlimited wallets
-            - Points dashboard
-            - Path-to-eligibility tips
-            - Sybil protection analyzer
-
-            *API - $99/month*
-            - Everything in Architect
-            - REST API access
-            - Webhooks
-
-            Select a plan to upgrade:
-            """;
-
         var keyboard = new InlineKeyboardMarkup(new[]
         {
             new[]
@@ -760,7 +700,7 @@ public class TelegramBotService : ITelegramBotService
 
         await _bot.SendMessage(
             chatId,
-            pricing,
+            _localizer.Get("PricingInfo", lang),
             parseMode: ParseMode.Markdown,
             replyMarkup: keyboard,
             cancellationToken: ct);
@@ -771,11 +711,12 @@ public class TelegramBotService : ITelegramBotService
         var chatId = callback.Message!.Chat.Id;
         var telegramId = callback.From.Id;
         var data = callback.Data ?? "";
+        var lang = callback.From.LanguageCode;
 
         if (data.StartsWith("subscribe:"))
         {
             var tier = data.Split(':')[1];
-            await HandleSubscribeCallbackAsync(callback, chatId, telegramId, tier, ct);
+            await HandleSubscribeCallbackAsync(callback, chatId, telegramId, tier, lang, ct);
         }
         else if (data.StartsWith("reveal:"))
         {
@@ -785,13 +726,13 @@ public class TelegramBotService : ITelegramBotService
             {
                 var method = parts[1];
                 var address = parts[2];
-                await HandleRevealCallbackAsync(callback, chatId, telegramId, address, method, ct);
+                await HandleRevealCallbackAsync(callback, chatId, telegramId, address, method, lang, ct);
             }
             else if (parts.Length == 2)
             {
                 // Legacy format - show payment options
                 var address = parts[1];
-                await ShowRevealPaymentOptionsAsync(chatId, address, ct);
+                await ShowRevealPaymentOptionsAsync(chatId, address, lang, ct);
             }
         }
     }
@@ -801,11 +742,15 @@ public class TelegramBotService : ITelegramBotService
         long chatId,
         long telegramId,
         string tier,
+        string? lang,
         CancellationToken ct)
     {
         try
         {
-            await _bot.AnswerCallbackQuery(callback.Id, "Generating checkout link...", cancellationToken: ct);
+            await _bot.AnswerCallbackQuery(
+                callback.Id,
+                _localizer.Get("GeneratingCheckoutLink", lang),
+                cancellationToken: ct);
 
             var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
 
@@ -831,14 +776,9 @@ public class TelegramBotService : ITelegramBotService
                 _ => "?"
             };
 
-            // Use HTML mode to avoid Markdown corrupting URLs with underscores
             await _bot.SendMessage(
                 chatId,
-                $"<b>Upgrade to {tierName}</b>\n\n" +
-                $"Price: {price}/month\n\n" +
-                $"Click the link below to complete your purchase:\n" +
-                $"{session.Url}\n\n" +
-                $"<i>Link expires in 24 hours</i>",
+                _localizer.GetFormatted("UpgradeHeader", lang, tierName, price, session.Url),
                 parseMode: ParseMode.Html,
                 cancellationToken: ct);
 
@@ -851,7 +791,7 @@ public class TelegramBotService : ITelegramBotService
             _logger.LogError(ex, "Error creating checkout session for tier {Tier}", tier);
             await _bot.AnswerCallbackQuery(
                 callback.Id,
-                "Error generating checkout link. Please try again.",
+                _localizer.Get("ErrorGeneratingCheckout", lang),
                 showAlert: true,
                 cancellationToken: ct);
         }
@@ -860,27 +800,29 @@ public class TelegramBotService : ITelegramBotService
     private async Task ShowRevealPaymentOptionsAsync(
         long chatId,
         string walletAddress,
+        string? lang,
         CancellationToken ct)
     {
         var buttons = new List<InlineKeyboardButton[]>
         {
-            new[] { InlineKeyboardButton.WithCallbackData("Pay with Card ($5)", $"reveal:card:{walletAddress}") }
+            new[] { InlineKeyboardButton.WithCallbackData(
+                _localizer.Get("PayWithCard", lang),
+                $"reveal:card:{walletAddress}") }
         };
 
         // Only show crypto option if service is configured
         if (_cryptoPaymentService != null)
         {
-            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("Pay with Crypto ($5)", $"reveal:crypto:{walletAddress}") });
+            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData(
+                _localizer.Get("PayWithCrypto", lang),
+                $"reveal:crypto:{walletAddress}") });
         }
 
         var keyboard = new InlineKeyboardMarkup(buttons);
 
         await _bot.SendMessage(
             chatId,
-            $"<b>Unlock Wallet Details</b>\n\n" +
-            $"Wallet: <code>{ShortenAddress(walletAddress)}</code>\n" +
-            $"Price: $5 one-time\n\n" +
-            $"Choose your payment method:",
+            _localizer.GetFormatted("UnlockWalletDetails", lang, ShortenAddress(walletAddress)),
             parseMode: ParseMode.Html,
             replyMarkup: keyboard,
             cancellationToken: ct);
@@ -892,11 +834,15 @@ public class TelegramBotService : ITelegramBotService
         long telegramId,
         string walletAddress,
         string paymentMethod,
+        string? lang,
         CancellationToken ct)
     {
         try
         {
-            await _bot.AnswerCallbackQuery(callback.Id, "Generating checkout link...", cancellationToken: ct);
+            await _bot.AnswerCallbackQuery(
+                callback.Id,
+                _localizer.Get("GeneratingCheckoutLink", lang),
+                cancellationToken: ct);
 
             var user = await _userService.GetUserByTelegramIdAsync(telegramId, ct);
 
@@ -905,7 +851,7 @@ public class TelegramBotService : ITelegramBotService
             {
                 await _bot.SendMessage(
                     chatId,
-                    $"You've already unlocked details for `{ShortenAddress(walletAddress)}`",
+                    _localizer.GetFormatted("AlreadyUnlockedWallet", lang, ShortenAddress(walletAddress)),
                     parseMode: ParseMode.Markdown,
                     cancellationToken: ct);
                 return;
@@ -933,7 +879,7 @@ public class TelegramBotService : ITelegramBotService
                     ct);
 
                 checkoutUrl = charge.HostedUrl;
-                paymentMethodDisplay = "Crypto (BTC, ETH, USDC, etc.)";
+                paymentMethodDisplay = _localizer.Get("PaymentMethodCrypto", lang);
 
                 _logger.LogInformation(
                     "Generated crypto reveal checkout for user {UserId}, wallet {Wallet}, charge {ChargeCode}",
@@ -949,7 +895,7 @@ public class TelegramBotService : ITelegramBotService
                     ct);
 
                 checkoutUrl = session.Url;
-                paymentMethodDisplay = "Card";
+                paymentMethodDisplay = _localizer.Get("PaymentMethodCard", lang);
 
                 _logger.LogInformation(
                     "Generated card reveal checkout for user {UserId}, wallet {Wallet}",
@@ -958,13 +904,8 @@ public class TelegramBotService : ITelegramBotService
 
             await _bot.SendMessage(
                 chatId,
-                $"<b>Unlock Wallet Details</b>\n\n" +
-                $"Wallet: <code>{ShortenAddress(walletAddress)}</code>\n" +
-                $"Price: $5 one-time\n" +
-                $"Payment: {paymentMethodDisplay}\n\n" +
-                $"Click the link below to complete your purchase:\n" +
-                $"{checkoutUrl}\n\n" +
-                $"<i>Link expires in 1 hour</i>",
+                _localizer.GetFormatted("RevealCheckoutHeader", lang,
+                    ShortenAddress(walletAddress), paymentMethodDisplay, checkoutUrl),
                 parseMode: ParseMode.Html,
                 cancellationToken: ct);
         }
@@ -973,7 +914,7 @@ public class TelegramBotService : ITelegramBotService
             _logger.LogError(ex, "Error creating reveal checkout for wallet {Wallet}", walletAddress);
             await _bot.AnswerCallbackQuery(
                 callback.Id,
-                "Error generating checkout link. Please try again.",
+                _localizer.Get("ErrorGeneratingCheckout", lang),
                 showAlert: true,
                 cancellationToken: ct);
         }
