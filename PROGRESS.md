@@ -10,7 +10,7 @@
 **Phase:** 2 - Core Features (IN PROGRESS)
 **Week:** 5
 **Last Updated:** 2026-02-05
-**Last Session Focus:** Geo-restriction and localization services implementation (ADR-011)
+**Last Session Focus:** Integrate i18n and geo-restriction into Telegram bot (PR #15)
 
 ---
 
@@ -71,7 +71,13 @@ When starting a new session, Claude should:
 | ILocalizationService | 2026-02-05 | JSON-based i18n with caching and fallback |
 | Locale files (en) | 2026-02-05 | telegram.json, errors.json, notifications.json |
 | User model i18n fields | 2026-02-05 | Added CountryCode, PreferredLanguage |
-| PR #13 opened | 2026-02-05 | Geo-restriction and localization services |
+| PR #13 merged | 2026-02-05 | Geo-restriction and localization services |
+| PR #14 merged | 2026-02-05 | Operations runbook |
+| i18n integrated into TelegramBotService | 2026-02-05 | All ~60 hardcoded strings replaced with locale lookups |
+| Geo-restriction in TelegramBotService | 2026-02-05 | OFAC check before command processing |
+| Language detection from Telegram | 2026-02-05 | Captures language_code, stores as PreferredLanguage |
+| Legal links in /start message | 2026-02-05 | ToS and Privacy Policy links in Welcome message |
+| PR #15 opened | 2026-02-05 | Integrate i18n and geo-restriction into Telegram bot |
 
 ---
 
@@ -124,18 +130,18 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #13** - Geo-restriction and localization services
-2. **Integrate services into TelegramBotService** - Use ILocalizationService for all strings, IGeoRestrictionService for access control
-3. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
-4. **Test /check and /points commands** - Verify real data is returned
-5. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
-6. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-7. **Add legal links to Telegram /start** - Link to ToS and Privacy Policy
+1. **Merge PR #15** - i18n and geo-restriction integration into Telegram bot
+2. **Seed airdrop data** - Add airdrops to the `airdrops` Cosmos DB container for testing
+3. **Test /check and /points commands** - Verify real data is returned via ngrok
+4. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
+5. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+6. **Task L.9: Legal links functional** - Update ToS/Privacy Policy URLs once web hosting is configured
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
 **Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).
 **i18n infrastructure COMPLETE!** PR #13 adds geo-restriction and localization services (ADR-011).
-**Next:** Integrate i18n services into Telegram bot, then seed test data.
+**i18n integration COMPLETE!** PR #15 wires localization/geo-restriction into TelegramBotService.
+**Next:** Merge PR #15, then seed airdrop test data and test full command flow.
 
 ---
 
@@ -172,7 +178,7 @@ When starting a new session, Claude should:
 - [ ] **Task L.6:** Replace placeholders in legal docs ⚠️ HUMAN
 - [ ] **Task L.7:** Attorney review of legal docs ⚠️ HUMAN
 - [ ] **Task L.8:** Set up privacy email address ⚠️ HUMAN
-- [ ] **Task L.9:** Add legal links to Telegram bot /start message
+- [x] **Task L.9:** Add legal links to Telegram bot /start message ✅ Added to Welcome locale string (PR #15)
 - [ ] **Task L.10:** Implement cookie consent banner (web dashboard)
 
 ---
@@ -204,6 +210,31 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-05 (Session 11)
+**Focus:** Integrate i18n and geo-restriction into Telegram bot
+**What happened:**
+- Resumed from PR #13 and #14 (both merged by user)
+- Rewrote TelegramBotService to use ILocalizationService for all user-facing strings:
+  - Added ILocalizationService and IGeoRestrictionService as constructor dependencies
+  - Threaded `string? lang` parameter through all 15+ handler methods
+  - Replaced ~60 hardcoded strings with `_localizer.Get()` and `_localizer.GetFormatted()` calls
+  - Strings pulled from telegram.json (default category) and errors.json
+- Added geo-restriction check in HandleMessageAsync:
+  - Checks user.CountryCode against IGeoRestrictionService before processing commands
+  - Currently a no-op for Telegram (can't detect country from webhook), effective when country detection added
+  - Sends localized "CountryRestricted" message from errors.json if blocked
+- Added language detection from Telegram:
+  - Captures `message.From.LanguageCode` on each message
+  - Updates user's `PreferredLanguage` in DB when Telegram provides a different language
+  - Uses Telegram language for current request, falls back to stored preference
+- Added legal links to Welcome message in telegram.json (ToS + Privacy Policy placeholder URLs)
+- Build: 0 errors, 6 pre-existing Nethereum warnings
+- Created PR #15
+
+**Outcome:** All Telegram bot strings now externalized to locale files. Architecture fully i18n-ready for future language additions.
+
+---
 
 ### Session: 2026-02-05 (Session 10)
 **Focus:** Geo-restriction and localization services implementation
