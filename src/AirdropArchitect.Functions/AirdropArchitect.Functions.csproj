@@ -22,4 +22,11 @@
     <ProjectReference Include="..\AirdropArchitect.Infrastructure\AirdropArchitect.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- Include locale files in build output -->
+  <ItemGroup>
+    <None Update="Locales\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

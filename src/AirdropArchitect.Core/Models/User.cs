@@ -49,6 +49,20 @@ public class User
     [JsonPropertyName("tenantId")]
     public string? TenantId { get; set; }
 
+    /// <summary>
+    /// ISO 3166-1 alpha-2 country code (e.g., "US", "GB", "DE").
+    /// Used for OFAC compliance geo-restriction checks.
+    /// </summary>
+    [JsonPropertyName("countryCode")]
+    public string? CountryCode { get; set; }
+
+    /// <summary>
+    /// ISO 639-1 language code (e.g., "en", "es", "de").
+    /// Used for localization of bot messages.
+    /// </summary>
+    [JsonPropertyName("preferredLanguage")]
+    public string PreferredLanguage { get; set; } = "en";
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

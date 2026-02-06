@@ -1,0 +1,15 @@
+{
+  "GenericError": "An error occurred. Please try again later.",
+  "InvalidWalletAddress": "Invalid wallet address. Please check and try again.",
+  "WalletNotFound": "Wallet not found.",
+  "UserNotFound": "User account not found. Please use /start to create an account.",
+  "SubscriptionRequired": "This feature requires a subscription. Use /upgrade to unlock.",
+  "RateLimitExceeded": "Too many requests. Please wait a moment and try again.",
+  "ServiceUnavailable": "Service temporarily unavailable. Please try again later.",
+  "PaymentFailed": "Payment failed. Please try again or use a different payment method.",
+  "InvalidCommand": "Unknown command. Use /help to see available commands.",
+  "WalletLimitReached": "You've reached your wallet tracking limit. Upgrade with /upgrade to track more wallets.",
+  "ChecksExhausted": "You've used all your free checks this month. Upgrade with /upgrade for unlimited checks.",
+  "CountryRestricted": "Sorry, this service is not available in your region due to regulatory restrictions.",
+  "CountryRestrictedReason": "Sorry, this service is not available in your region: {0}"
+}
