@@ -114,6 +114,8 @@ if (!string.IsNullOrEmpty(cosmosConnectionString))
 
     // Points Providers
     builder.Services.AddSingleton<IPointsProvider, HyperliquidPointsProvider>();
+    builder.Services.AddSingleton<IPointsProvider, EigenLayerPointsProvider>();
+    builder.Services.AddSingleton<IPointsProvider, EthenaPointsProvider>();
 
     // Points Service (requires Cosmos DB)
     builder.Services.AddSingleton<IPointsService>(sp =>

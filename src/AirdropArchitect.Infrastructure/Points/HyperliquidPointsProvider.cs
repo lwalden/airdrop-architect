@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using AirdropArchitect.Infrastructure.Data;
+using AirdropArchitect.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
