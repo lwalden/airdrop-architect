@@ -10,7 +10,7 @@
 **Phase:** 2 - Core Features (IN PROGRESS)
 **Week:** 5
 **Last Updated:** 2026-02-05
-**Last Session Focus:** Legal documents and compliance strategy (ADR-012)
+**Last Session Focus:** Geo-restriction and localization services implementation (ADR-011)
 
 ---
 
@@ -67,6 +67,11 @@ When starting a new session, Claude should:
 | Legal: Data Subject Rights | 2026-02-05 | Created (docs/data-subject-rights.md) |
 | Legal: EU/UK Addendum | 2026-02-05 | Created (docs/privacy-policy-eu-uk-addendum.md) |
 | ADR-012: Legal/Compliance | 2026-02-05 | MiCA does NOT apply, documents strategy |
+| IGeoRestrictionService | 2026-02-05 | OFAC compliance with configurable blocklist |
+| ILocalizationService | 2026-02-05 | JSON-based i18n with caching and fallback |
+| Locale files (en) | 2026-02-05 | telegram.json, errors.json, notifications.json |
+| User model i18n fields | 2026-02-05 | Added CountryCode, PreferredLanguage |
+| PR #13 opened | 2026-02-05 | Geo-restriction and localization services |
 
 ---
 
@@ -119,18 +124,18 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Implement IGeoRestrictionService** - OFAC compliance (see ADR-011)
-2. **Implement ILocalizationService** - String externalization for i18n-ready architecture
-3. **Create locale files structure** - `/src/AirdropArchitect.Core/Locales/en/`
-4. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
-5. **Test /check and /points commands** - Verify real data is returned
-6. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
-7. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-8. **Add legal links to Telegram /start** - Link to ToS and Privacy Policy
+1. **Merge PR #13** - Geo-restriction and localization services
+2. **Integrate services into TelegramBotService** - Use ILocalizationService for all strings, IGeoRestrictionService for access control
+3. **Seed airdrop data** - Add some airdrops to the `airdrops` container for testing
+4. **Test /check and /points commands** - Verify real data is returned
+5. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
+6. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+7. **Add legal links to Telegram /start** - Link to ToS and Privacy Policy
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
 **Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).
-**Next:** Implement geo-restriction and i18n services, then web dashboard Phase 4.
+**i18n infrastructure COMPLETE!** PR #13 adds geo-restriction and localization services (ADR-011).
+**Next:** Integrate i18n services into Telegram bot, then seed test data.
 
 ---
 
@@ -199,6 +204,36 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-05 (Session 10)
+**Focus:** Geo-restriction and localization services implementation
+**What happened:**
+- Continued from previous session implementing ADR-011
+- Created IGeoRestrictionService interface with OFAC compliance methods
+- Implemented GeoRestrictionService with blocked countries:
+  - OFAC Comprehensive: IR, KP, SY, CU
+  - OFAC Significant: RU, BY, VE
+  - OFAC Partial: AF
+  - Crypto-specific: DZ (Algeria)
+  - OFAC Region: UA-43 (Crimea)
+- Created ILocalizationService interface for i18n
+- Implemented LocalizationService with:
+  - JSON locale file loading from Locales/{lang}/{category}.json
+  - ConcurrentDictionary cache for loaded locales
+  - Fallback to English when requested language unavailable
+  - Returns key itself if string not found (helps identify missing translations)
+- Created English locale files:
+  - telegram.json (all bot messages externalized)
+  - errors.json (error messages)
+  - notifications.json (alert templates)
+- Updated User model with CountryCode and PreferredLanguage fields
+- Wired up services in Program.cs DI container
+- Updated .csproj to copy Locales folder to output
+- Build successful, created PR #13
+
+**Outcome:** i18n-ready infrastructure complete, ready for integration into TelegramBotService
+
+---
 
 ### Session: 2026-02-05 (Session 9)
 **Focus:** Internationalization strategy and geographic restrictions
