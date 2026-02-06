@@ -9,8 +9,8 @@
 
 **Phase:** 2 - Core Features (IN PROGRESS)
 **Week:** 5
-**Last Updated:** 2026-02-05
-**Last Session Focus:** Integrate i18n and geo-restriction into Telegram bot (PR #15)
+**Last Updated:** 2026-02-06
+**Last Session Focus:** Seed airdrop data + add EigenLayer/Ethena points providers (PR #16)
 
 ---
 
@@ -77,7 +77,12 @@ When starting a new session, Claude should:
 | Geo-restriction in TelegramBotService | 2026-02-05 | OFAC check before command processing |
 | Language detection from Telegram | 2026-02-05 | Captures language_code, stores as PreferredLanguage |
 | Legal links in /start message | 2026-02-05 | ToS and Privacy Policy links in Welcome message |
-| PR #15 opened | 2026-02-05 | Integrate i18n and geo-restriction into Telegram bot |
+| PR #15 merged | 2026-02-05 | Integrate i18n and geo-restriction into Telegram bot |
+| IPointsProvider moved to Core | 2026-02-06 | Moved interface + PointsData from Infrastructure to Core/Interfaces |
+| EigenLayer points provider | 2026-02-06 | EigenLayerPointsProvider for restaked points API |
+| Ethena points provider | 2026-02-06 | EthenaPointsProvider for sats balance API |
+| Admin SeedDataFunction | 2026-02-06 | POST /api/admin/seed — 10 airdrops + 4 points programs |
+| PR #16 opened | 2026-02-06 | Seed data function and points providers |
 
 ---
 
@@ -130,18 +135,19 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #15** - i18n and geo-restriction integration into Telegram bot
-2. **Seed airdrop data** - Add airdrops to the `airdrops` Cosmos DB container for testing
-3. **Test /check and /points commands** - Verify real data is returned via ngrok
-4. **Add more points providers** - EigenLayer, Blast, etc. following HyperliquidPointsProvider pattern
-5. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-6. **Task L.9: Legal links functional** - Update ToS/Privacy Policy URLs once web hosting is configured
+1. **Merge PR #16** - Seed data function + EigenLayer/Ethena providers
+2. **Run seed function** - Call `POST /api/admin/seed` to populate Cosmos DB containers
+3. **Test full command flow via ngrok** - `/check 0x...` and `/points 0x...` with real seeded data
+4. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
+5. **Task L.9: Legal links functional** - Update ToS/Privacy Policy URLs once web hosting is configured
+6. **Phase 2 finalization** - Verify all Phase 2 success criteria are met
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
 **Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).
 **i18n infrastructure COMPLETE!** PR #13 adds geo-restriction and localization services (ADR-011).
 **i18n integration COMPLETE!** PR #15 wires localization/geo-restriction into TelegramBotService.
-**Next:** Merge PR #15, then seed airdrop test data and test full command flow.
+**Seed data + providers COMPLETE!** PR #16 adds seed function, EigenLayer + Ethena providers.
+**Next:** Merge PR #16, run seed function, test full command flow with real data.
 
 ---
 
@@ -210,6 +216,33 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-06 (Session 12)
+**Focus:** Seed airdrop data and add points providers (PR #16)
+**What happened:**
+- Resumed from PR #15 (merged by user)
+- Created plan for seed data + points providers, user approved
+- Moved IPointsProvider interface and PointsData record from Infrastructure (CosmosDbPointsService.cs) to Core/Interfaces/IPointsProvider.cs
+- Created EigenLayerPointsProvider:
+  - Queries EigenLayer claims API for restaked points
+  - Polly retry (3 attempts, exponential backoff), 30s timeout
+  - Returns PointsData with points + rank
+- Created EthenaPointsProvider:
+  - Queries Ethena API for sats balance
+  - Same Polly retry pattern
+  - Returns PointsData with sats count + rank
+- Created SeedDataFunction (POST /api/admin/seed):
+  - AuthorizationLevel.Function (requires function key)
+  - Idempotent upserts using stable IDs
+  - 10 airdrops: 4 claimable (Starknet, LayerZero, ZKSync, Wormhole), 3 upcoming (Scroll, Linea, deBridge), 3 expired (Arbitrum, Optimism, Blur)
+  - 4 points programs: Hyperliquid, EigenLayer, Ethena, Scroll
+- Registered EigenLayerPointsProvider and EthenaPointsProvider in Program.cs DI
+- Build: 0 errors
+- Created PR #16
+
+**Outcome:** Cosmos DB containers can now be populated with test data. 3 points providers active (Hyperliquid, EigenLayer, Ethena).
+
+---
 
 ### Session: 2026-02-05 (Session 11)
 **Focus:** Integrate i18n and geo-restriction into Telegram bot
