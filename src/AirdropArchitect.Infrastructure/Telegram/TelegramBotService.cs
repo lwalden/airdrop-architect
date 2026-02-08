@@ -371,12 +371,13 @@ public class TelegramBotService : ITelegramBotService
                     var eligibility = await _airdropService.CheckEligibilityAsync(address, ct);
                     if (eligibility.Count > 0)
                     {
-                        var eligible = eligibility.Where(e => e.IsEligible).ToList();
+                        var confirmed = eligibility.Where(e => e.IsEligible).ToList();
+                        var claimable = eligibility.Where(e => !e.IsEligible && e.Status == "claimable").ToList();
 
-                        if (eligible.Count > 0)
+                        if (confirmed.Count > 0)
                         {
-                            response.AppendLine(_localizer.GetFormatted("AirdropsAvailable", lang, eligible.Count));
-                            foreach (var airdrop in eligible.Take(5))
+                            response.AppendLine(_localizer.GetFormatted("AirdropsAvailable", lang, confirmed.Count));
+                            foreach (var airdrop in confirmed.Take(5))
                             {
                                 var statusEmoji = airdrop.HasClaimed ? "(claimed)" : "(unclaimed)";
                                 var amount = airdrop.AllocationAmount.HasValue
@@ -392,14 +393,39 @@ public class TelegramBotService : ITelegramBotService
                                     }
                                 }
                             }
-                            if (eligible.Count > 5)
+                            if (confirmed.Count > 5)
                             {
-                                response.AppendLine(_localizer.GetFormatted("AndMore", lang, eligible.Count - 5));
+                                response.AppendLine(_localizer.GetFormatted("AndMore", lang, confirmed.Count - 5));
                             }
                         }
                         else
                         {
                             response.AppendLine(_localizer.Get("NoEligibleAirdrops", lang));
+                        }
+
+                        // Show claimable airdrops the user should check manually
+                        if (claimable.Count > 0)
+                        {
+                            response.AppendLine(_localizer.GetFormatted("ClaimableAirdropsHeader", lang, claimable.Count));
+                            foreach (var airdrop in claimable.Take(5))
+                            {
+                                if (!string.IsNullOrEmpty(airdrop.ClaimUrl))
+                                {
+                                    response.AppendLine($"    - [{airdrop.AirdropName} ({airdrop.TokenSymbol})]({airdrop.ClaimUrl})");
+                                }
+                                else
+                                {
+                                    response.AppendLine($"    - {airdrop.AirdropName} ({airdrop.TokenSymbol})");
+                                }
+                                if (airdrop.ClaimDeadline.HasValue)
+                                {
+                                    var daysLeft = (airdrop.ClaimDeadline.Value - DateTime.UtcNow).Days;
+                                    if (daysLeft <= 30)
+                                    {
+                                        response.AppendLine(_localizer.GetFormatted("DeadlineWarning", lang, daysLeft));
+                                    }
+                                }
+                            }
                         }
                     }
                     else
