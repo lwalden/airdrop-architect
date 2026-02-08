@@ -12,6 +12,7 @@ public class CosmosDbAirdropService : IAirdropService
 {
     private readonly Container _airdropContainer;
     private readonly Container _eligibilityContainer;
+    private readonly IEligibilityChecker[] _eligibilityCheckers;
     private readonly ILogger<CosmosDbAirdropService> _logger;
 
     private const string AirdropPartitionKey = "airdrops";
@@ -19,11 +20,13 @@ public class CosmosDbAirdropService : IAirdropService
     public CosmosDbAirdropService(
         CosmosClient cosmosClient,
         string databaseName,
-        ILogger<CosmosDbAirdropService> logger)
+        ILogger<CosmosDbAirdropService> logger,
+        IEnumerable<IEligibilityChecker>? eligibilityCheckers = null)
     {
         var database = cosmosClient.GetDatabase(databaseName);
         _airdropContainer = database.GetContainer("airdrops");
         _eligibilityContainer = database.GetContainer("eligibility");
+        _eligibilityCheckers = eligibilityCheckers?.ToArray() ?? Array.Empty<IEligibilityChecker>();
         _logger = logger;
     }
 
@@ -114,27 +117,72 @@ public class CosmosDbAirdropService : IAirdropService
             );
         }
 
-        // TODO: Implement actual eligibility checking based on checkMethod
-        // For now, return unknown/not checked
-        var result = new EligibilityCheck(
+        // Find a checker that can handle this airdrop's check method
+        var checker = _eligibilityCheckers.FirstOrDefault(c => c.CanHandle(airdrop.CheckMethod));
+
+        EligibilityCheckResult checkResult;
+        if (checker != null)
+        {
+            checkResult = await checker.CheckAsync(walletAddress, airdrop, ct);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "No eligibility checker found for method '{Method}' on {Airdrop}",
+                airdrop.CheckMethod, airdrop.Name);
+            checkResult = new EligibilityCheckResult(
+                IsEligible: false,
+                AllocationAmount: null,
+                AllocationUsd: null,
+                HasClaimed: false,
+                ErrorMessage: $"No checker for method: {airdrop.CheckMethod}");
+        }
+
+        // Cache the result
+        try
+        {
+            var eligibilityResult = new EligibilityResult
+            {
+                Id = $"{airdrop.Id}-{walletAddress.ToLowerInvariant()}",
+                PartitionKey = $"elig-{airdrop.Id}",
+                AirdropId = airdrop.Id,
+                WalletAddress = walletAddress.ToLowerInvariant(),
+                IsEligible = checkResult.IsEligible,
+                AllocationAmount = checkResult.AllocationAmount,
+                AllocationUsd = checkResult.AllocationUsd,
+                HasClaimed = checkResult.HasClaimed,
+                MerkleProof = checkResult.MerkleProof,
+                CheckedAt = DateTime.UtcNow
+            };
+
+            await _eligibilityContainer.UpsertItemAsync(
+                eligibilityResult,
+                new PartitionKey(eligibilityResult.PartitionKey),
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to cache eligibility result for {Wallet}/{Airdrop}",
+                walletAddress[..10], airdrop.Id);
+        }
+
+        _logger.LogDebug(
+            "Checked eligibility for {Wallet} on {Airdrop}: {Eligible}",
+            walletAddress[..10], airdrop.Name, checkResult.IsEligible);
+
+        return new EligibilityCheck(
             AirdropId: airdrop.Id,
             AirdropName: airdrop.Name,
             TokenSymbol: airdrop.TokenSymbol,
             Status: airdrop.Status,
-            IsEligible: false,
-            AllocationAmount: null,
-            AllocationUsd: null,
-            HasClaimed: false,
+            IsEligible: checkResult.IsEligible,
+            AllocationAmount: checkResult.AllocationAmount,
+            AllocationUsd: checkResult.AllocationUsd,
+            HasClaimed: checkResult.HasClaimed,
             ClaimDeadline: airdrop.ClaimDeadline,
             ClaimUrl: airdrop.ClaimUrl,
             Criteria: airdrop.Criteria
         );
-
-        _logger.LogDebug(
-            "Checked eligibility for {Wallet} on {Airdrop}: {Eligible}",
-            walletAddress[..10], airdrop.Name, result.IsEligible);
-
-        return result;
     }
 
     private async Task<EligibilityResult?> GetCachedEligibilityForAirdropAsync(
