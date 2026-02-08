@@ -264,23 +264,3 @@ public class CosmosDbPointsService : IPointsService
         return response.Resource;
     }
 }
-
-/// <summary>
-/// Interface for protocol-specific points providers
-/// </summary>
-public interface IPointsProvider
-{
-    string ProtocolName { get; }
-    bool CanHandle(string protocolName);
-    Task<PointsData?> GetPointsAsync(string walletAddress, CancellationToken ct = default);
-}
-
-/// <summary>
-/// Raw points data from a provider
-/// </summary>
-public record PointsData(
-    decimal Points,
-    int? Rank,
-    decimal? Percentile,
-    decimal? EstimatedValueUsd
-);
