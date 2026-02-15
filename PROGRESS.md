@@ -10,7 +10,7 @@
 **Phase:** 2 - Core Features (COMPLETE)
 **Week:** 5
 **Last Updated:** 2026-02-15
-**Last Session Focus:** Telegram E2E validation completed successfully
+**Last Session Focus:** NuGet vulnerability remediation for test projects
 
 ---
 
@@ -86,6 +86,8 @@ When starting a new session, Claude should:
 | PR #18 merged | 2026-02-15 | VS Code .NET tooling task/debug settings |
 | Phase 2 closeout validation run | 2026-02-15 | Built solution, ran local Functions host, seeded data via /api/ops/seed, replayed /check + /points webhook payloads |
 | Telegram live flow validation | 2026-02-15 | Real Telegram chat validation complete: `/check` and `/points` flow successful end-to-end |
+| NuGet vulnerability scan | 2026-02-15 | `dotnet list package --vulnerable --include-transitive` identified high transitive vulnerabilities in test projects |
+| Test dependency security updates | 2026-02-15 | Added explicit safe versions for `System.Net.Http` (4.3.4) and `System.Text.RegularExpressions` (4.3.1) in both test projects |
 
 ---
 
@@ -141,7 +143,7 @@ When starting a new session, Claude should:
 
 1. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production once production endpoint is available
 2. **Task L.9 follow-up** - Replace placeholder ToS/Privacy URLs in locale strings with hosted legal doc URLs
-3. **Review PR #17** - Dependabot NuGet bump PR is currently open
+3. **Merge dependency security PR** - Apply test project vulnerability remediations to `main` (supersedes manual review-only path)
 4. **Phase 3 kickoff planning** - Prioritize first payment hardening/commercial readiness task after successful Phase 2 validation
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
@@ -218,6 +220,31 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-15 (Session 15)
+**Focus:** Remediate high-severity transitive NuGet vulnerabilities in test projects
+**What happened:**
+- Resumed from merged PR #19 and reviewed open backlog item (PR #17 Dependabot update)
+- Ran vulnerability scan:
+  - `dotnet list AirdropArchitect.sln package --vulnerable --include-transitive`
+  - Found high advisories in test projects via transitive packages:
+    - `System.Net.Http` 4.3.0 (GHSA-7jgj-8wvc-jh57)
+    - `System.Text.RegularExpressions` 4.3.0 (GHSA-cmhx-cq75-c4mj)
+- Implemented explicit dependency overrides in:
+  - `tests/AirdropArchitect.Core.Tests/AirdropArchitect.Core.Tests.csproj`
+  - `tests/AirdropArchitect.Functions.Tests/AirdropArchitect.Functions.Tests.csproj`
+- Set patched versions:
+  - `System.Net.Http` -> 4.3.4
+  - `System.Text.RegularExpressions` -> 4.3.1
+- Verification:
+  - `dotnet restore AirdropArchitect.sln` ✅
+  - `dotnet build AirdropArchitect.sln` ✅ (existing NU1608 warnings unchanged)
+  - `dotnet test AirdropArchitect.sln --no-build` ✅ (no discoverable tests currently present)
+  - `dotnet list ... --vulnerable --include-transitive` ✅ (no vulnerable packages reported)
+
+**Outcome:** High-severity NuGet advisories for test projects are remediated and verified.
+
+---
 
 ### Session: 2026-02-15 (Session 14)
 **Focus:** Finalize Telegram E2E validation
