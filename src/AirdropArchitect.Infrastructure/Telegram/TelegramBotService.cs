@@ -5,12 +5,16 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using AirdropArchitect.Core.Interfaces;
 using AirdropArchitect.Core.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AirdropArchitect.Infrastructure.Telegram;
 
 public class TelegramBotService : ITelegramBotService
 {
+    private const string DefaultTermsOfServiceUrl = "https://airdroparchitect.com/terms";
+    private const string DefaultPrivacyPolicyUrl = "https://airdroparchitect.com/privacy";
+
     private readonly ITelegramBotClient _bot;
     private readonly IUserService _userService;
     private readonly IBlockchainService _blockchainService;
@@ -20,6 +24,8 @@ public class TelegramBotService : ITelegramBotService
     private readonly IPointsService? _pointsService;
     private readonly ILocalizationService _localizer;
     private readonly IGeoRestrictionService _geoRestriction;
+    private readonly string _termsOfServiceUrl;
+    private readonly string _privacyPolicyUrl;
     private readonly ILogger<TelegramBotService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -32,6 +38,7 @@ public class TelegramBotService : ITelegramBotService
         IUserService userService,
         IBlockchainService blockchainService,
         IPaymentService paymentService,
+        IConfiguration configuration,
         ILocalizationService localizer,
         IGeoRestrictionService geoRestriction,
         ILogger<TelegramBotService> logger,
@@ -45,6 +52,16 @@ public class TelegramBotService : ITelegramBotService
         _paymentService = paymentService;
         _localizer = localizer;
         _geoRestriction = geoRestriction;
+        _termsOfServiceUrl = ResolveLegalUrl(
+            configuration["LEGAL_TERMS_URL"],
+            DefaultTermsOfServiceUrl,
+            "LEGAL_TERMS_URL",
+            logger);
+        _privacyPolicyUrl = ResolveLegalUrl(
+            configuration["LEGAL_PRIVACY_URL"],
+            DefaultPrivacyPolicyUrl,
+            "LEGAL_PRIVACY_URL",
+            logger);
         _cryptoPaymentService = cryptoPaymentService;
         _airdropService = airdropService;
         _pointsService = pointsService;
@@ -259,9 +276,33 @@ public class TelegramBotService : ITelegramBotService
     {
         await _bot.SendMessage(
             chatId,
-            _localizer.Get("Welcome", lang),
+            _localizer.GetFormatted("Welcome", lang, _termsOfServiceUrl, _privacyPolicyUrl),
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
+    }
+
+    private static string ResolveLegalUrl(
+        string? configuredUrl,
+        string fallbackUrl,
+        string settingName,
+        ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(configuredUrl))
+        {
+            return fallbackUrl;
+        }
+
+        if (Uri.TryCreate(configuredUrl, UriKind.Absolute, out var parsed) &&
+            (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps))
+        {
+            return configuredUrl;
+        }
+
+        logger.LogWarning(
+            "Invalid URL for {SettingName}: '{ConfiguredUrl}'. Falling back to default URL.",
+            settingName,
+            configuredUrl);
+        return fallbackUrl;
     }
 
     private async Task SendHelpAsync(long chatId, string? lang, CancellationToken ct)
