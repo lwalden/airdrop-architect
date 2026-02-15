@@ -7,10 +7,10 @@
 
 ## Current State
 
-**Phase:** 2 - Core Features (IN PROGRESS)
+**Phase:** 2 - Core Features (COMPLETE)
 **Week:** 5
-**Last Updated:** 2026-02-06
-**Last Session Focus:** Seed airdrop data + add EigenLayer/Ethena points providers (PR #16)
+**Last Updated:** 2026-02-15
+**Last Session Focus:** Telegram E2E validation completed successfully
 
 ---
 
@@ -81,8 +81,11 @@ When starting a new session, Claude should:
 | IPointsProvider moved to Core | 2026-02-06 | Moved interface + PointsData from Infrastructure to Core/Interfaces |
 | EigenLayer points provider | 2026-02-06 | EigenLayerPointsProvider for restaked points API |
 | Ethena points provider | 2026-02-06 | EthenaPointsProvider for sats balance API |
-| Admin SeedDataFunction | 2026-02-06 | POST /api/admin/seed — 10 airdrops + 4 points programs |
-| PR #16 opened | 2026-02-06 | Seed data function and points providers |
+| Admin SeedDataFunction | 2026-02-06 | POST /api/ops/seed — 10 airdrops + 4 points programs |
+| PR #16 merged | 2026-02-08 | Seed data function and points providers |
+| PR #18 merged | 2026-02-15 | VS Code .NET tooling task/debug settings |
+| Phase 2 closeout validation run | 2026-02-15 | Built solution, ran local Functions host, seeded data via /api/ops/seed, replayed /check + /points webhook payloads |
+| Telegram live flow validation | 2026-02-15 | Real Telegram chat validation complete: `/check` and `/points` flow successful end-to-end |
 
 ---
 
@@ -123,6 +126,7 @@ When starting a new session, Claude should:
 | **Legal: Placeholder replacement** | User needs to fill in [DATE], [EMAIL], etc. in legal docs | 2026-02-05 |
 | **Legal: Attorney review** | User needs attorney to review legal docs (esp. crypto disclaimers) | 2026-02-05 |
 | Legal: Privacy email setup | User needs to set up privacy@airdroparchitect.com | 2026-02-05 |
+| ~~Telegram live flow validation~~ | ~~User needs to send a real message to bot so `/check` and `/points` can be validated end-to-end with a real chat ID~~ | ~~2026-02-15~~ DONE |
 
 ## Future Enhancements (Phase 2)
 
@@ -135,19 +139,17 @@ When starting a new session, Claude should:
 
 ## Next Session Should
 
-1. **Merge PR #16** - Seed data function + EigenLayer/Ethena providers
-2. **Run seed function** - Call `POST /api/admin/seed` to populate Cosmos DB containers
-3. **Test full command flow via ngrok** - `/check 0x...` and `/points 0x...` with real seeded data
-4. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production
-5. **Task L.9: Legal links functional** - Update ToS/Privacy Policy URLs once web hosting is configured
-6. **Phase 2 finalization** - Verify all Phase 2 success criteria are met
+1. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production once production endpoint is available
+2. **Task L.9 follow-up** - Replace placeholder ToS/Privacy URLs in locale strings with hosted legal doc URLs
+3. **Review PR #17** - Dependabot NuGet bump PR is currently open
+4. **Phase 3 kickoff planning** - Prioritize first payment hardening/commercial readiness task after successful Phase 2 validation
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
 **Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).
 **i18n infrastructure COMPLETE!** PR #13 adds geo-restriction and localization services (ADR-011).
 **i18n integration COMPLETE!** PR #15 wires localization/geo-restriction into TelegramBotService.
-**Seed data + providers COMPLETE!** PR #16 adds seed function, EigenLayer + Ethena providers.
-**Next:** Merge PR #16, run seed function, test full command flow with real data.
+**Seed data + providers COMPLETE!** PR #16 merged; seed endpoint is `POST /api/ops/seed`.
+**Validation update (2026-02-15):** Local and real Telegram command flow validation complete.
 
 ---
 
@@ -217,6 +219,42 @@ When starting a new session, Claude should:
 
 ## Recent Session Summaries
 
+### Session: 2026-02-15 (Session 14)
+**Focus:** Finalize Telegram E2E validation
+**What happened:**
+- User completed real Telegram validation successfully
+- Confirmed `/check` and `/points` command flow works end-to-end in a real chat context
+- Updated progress tracking to mark Telegram live validation done
+- Re-prioritized next-session tasks to post-validation work
+
+**Outcome:** Phase 2 validation is complete.
+
+---
+
+### Session: 2026-02-15 (Session 13)
+**Focus:** Phase 2 closeout validation + continuity file correction
+**What happened:**
+- Created branch `feature/phase2-closeout-doc-sync`
+- Verified repo state:
+  - `main` clean
+  - PR #16 merged on 2026-02-08
+  - PR #18 merged on 2026-02-15
+  - PR #17 (Dependabot) open
+- Built solution successfully (`dotnet build AirdropArchitect.sln`), with existing NU1608 warnings only
+- Installed Azure Functions Core Tools 4 locally via npm to enable local host execution
+- Ran local Functions host and executed:
+  - `POST /api/ops/seed` -> `200` with `{"success":true,"airdropsSeeded":10,"pointsProgramsSeeded":4}`
+  - `POST /api/telegram/webhook` for `/check` and `/points` payloads -> HTTP `200`
+- Confirmed webhook payload parsing works with proper JSON format
+- Confirmed telemetry logs show command handlers execute, but synthetic chat IDs fail at Telegram send step with `400 Bad Request: chat not found` (expected for non-real chat)
+- Updated PROGRESS.md stale entries:
+  - PR #16 state corrected from open -> merged
+  - seed route corrected from `/api/admin/seed` -> `/api/ops/seed`
+
+**Outcome:** Phase 2 closeout is partially validated locally. Remaining validation requires real Telegram chat traffic via ngrok.
+
+---
+
 ### Session: 2026-02-06 (Session 12)
 **Focus:** Seed airdrop data and add points providers (PR #16)
 **What happened:**
@@ -231,7 +269,7 @@ When starting a new session, Claude should:
   - Queries Ethena API for sats balance
   - Same Polly retry pattern
   - Returns PointsData with sats count + rank
-- Created SeedDataFunction (POST /api/admin/seed):
+- Created SeedDataFunction (POST /api/ops/seed):
   - AuthorizationLevel.Function (requires function key)
   - Idempotent upserts using stable IDs
   - 10 airdrops: 4 claimable (Starknet, LayerZero, ZKSync, Wormhole), 3 upcoming (Scroll, Linea, deBridge), 3 expired (Arbitrum, Optimism, Blur)
