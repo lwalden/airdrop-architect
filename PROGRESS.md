@@ -10,7 +10,7 @@
 **Phase:** 2 - Core Features (COMPLETE)
 **Week:** 5
 **Last Updated:** 2026-02-15
-**Last Session Focus:** NuGet vulnerability remediation for test projects
+**Last Session Focus:** Configurable legal links for Telegram welcome message
 
 ---
 
@@ -88,6 +88,7 @@ When starting a new session, Claude should:
 | Telegram live flow validation | 2026-02-15 | Real Telegram chat validation complete: `/check` and `/points` flow successful end-to-end |
 | NuGet vulnerability scan | 2026-02-15 | `dotnet list package --vulnerable --include-transitive` identified high transitive vulnerabilities in test projects |
 | Test dependency security updates | 2026-02-15 | Added explicit safe versions for `System.Net.Http` (4.3.4) and `System.Text.RegularExpressions` (4.3.1) in both test projects |
+| Configurable legal links for Telegram | 2026-02-15 | `/start` welcome message now formats Terms/Privacy URLs from `LEGAL_TERMS_URL` and `LEGAL_PRIVACY_URL` env settings with safe defaults |
 
 ---
 
@@ -128,6 +129,7 @@ When starting a new session, Claude should:
 | **Legal: Placeholder replacement** | User needs to fill in [DATE], [EMAIL], etc. in legal docs | 2026-02-05 |
 | **Legal: Attorney review** | User needs attorney to review legal docs (esp. crypto disclaimers) | 2026-02-05 |
 | Legal: Privacy email setup | User needs to set up privacy@airdroparchitect.com | 2026-02-05 |
+| Legal URL app settings | User needs to set `LEGAL_TERMS_URL` and `LEGAL_PRIVACY_URL` in Function App settings once hosted legal pages are finalized | 2026-02-15 |
 | ~~Telegram live flow validation~~ | ~~User needs to send a real message to bot so `/check` and `/points` can be validated end-to-end with a real chat ID~~ | ~~2026-02-15~~ DONE |
 
 ## Future Enhancements (Phase 2)
@@ -142,9 +144,8 @@ When starting a new session, Claude should:
 ## Next Session Should
 
 1. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production once production endpoint is available
-2. **Task L.9 follow-up** - Replace placeholder ToS/Privacy URLs in locale strings with hosted legal doc URLs
-3. **Merge dependency security PR** - Apply test project vulnerability remediations to `main` (supersedes manual review-only path)
-4. **Phase 3 kickoff planning** - Prioritize first payment hardening/commercial readiness task after successful Phase 2 validation
+2. **Set legal URL app settings** - Configure `LEGAL_TERMS_URL` and `LEGAL_PRIVACY_URL` in production app settings once legal pages are hosted
+3. **Phase 3 kickoff planning** - Prioritize first payment hardening/commercial readiness task after successful Phase 2 validation
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
 **Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).
@@ -152,6 +153,7 @@ When starting a new session, Claude should:
 **i18n integration COMPLETE!** PR #15 wires localization/geo-restriction into TelegramBotService.
 **Seed data + providers COMPLETE!** PR #16 merged; seed endpoint is `POST /api/ops/seed`.
 **Validation update (2026-02-15):** Local and real Telegram command flow validation complete.
+**Legal links follow-up COMPLETE (code):** Welcome message legal URLs now come from configuration.
 
 ---
 
@@ -220,6 +222,28 @@ When starting a new session, Claude should:
 ---
 
 ## Recent Session Summaries
+
+### Session: 2026-02-15 (Session 16)
+**Focus:** Complete Task L.9 follow-up with configurable legal links
+**What happened:**
+- Created branch `feature/configurable-legal-links`
+- Updated Telegram welcome localization string to use URL placeholders:
+  - `Terms of Service` -> `{0}`
+  - `Privacy Policy` -> `{1}`
+- Updated `TelegramBotService` to read legal URLs from configuration:
+  - `LEGAL_TERMS_URL`
+  - `LEGAL_PRIVACY_URL`
+- Added URL validation with fallback to defaults when settings are missing/invalid:
+  - `https://airdroparchitect.com/terms`
+  - `https://airdroparchitect.com/privacy`
+- Added optional env vars to `.env.example`
+- Verification:
+  - `dotnet build AirdropArchitect.sln` succeeds
+  - `dotnet test AirdropArchitect.sln --no-build` runs (no discoverable tests currently present)
+
+**Outcome:** Legal link routing is now deployment-configurable and no longer hardcoded in locale text.
+
+---
 
 ### Session: 2026-02-15 (Session 15)
 **Focus:** Remediate high-severity transitive NuGet vulnerabilities in test projects
