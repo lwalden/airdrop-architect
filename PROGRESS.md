@@ -9,7 +9,7 @@
 
 **Phase:** 2 - Core Features (COMPLETE)
 **Week:** 5
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-16
 **Last Session Focus:** Configurable legal links for Telegram welcome message
 
 ---
@@ -136,8 +136,8 @@ When starting a new session, Claude should:
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| Transactional Email | Payment receipts, welcome emails, subscription notifications via SendGrid/Azure Communication Services | Medium |
-| Email Collection | Prompt users for email during payment for receipts and account recovery | Medium |
+| Transactional Email | Payment receipts, welcome emails, subscription notifications via SendGrid/Azure Communication Services (include unit tests when implemented) | Medium |
+| Email Collection | Prompt users for email during payment for receipts and account recovery (include unit tests when implemented) | Medium |
 
 ---
 
@@ -146,6 +146,7 @@ When starting a new session, Claude should:
 1. **Configure webhooks** - Set up Stripe and Coinbase webhook URLs for production once production endpoint is available
 2. **Set legal URL app settings** - Configure `LEGAL_TERMS_URL` and `LEGAL_PRIVACY_URL` in production app settings once legal pages are hosted
 3. **Phase 3 kickoff planning** - Prioritize first payment hardening/commercial readiness task after successful Phase 2 validation
+4. **Testing requirement for coding tasks** - For any code change in upcoming sessions, add or update relevant unit tests in `tests/AirdropArchitect.Functions.Tests` and/or `tests/AirdropArchitect.Core.Tests`
 
 **Phase 2 Core Features COMPLETE!** PR #10 and #11 merged.
 **Legal foundation COMPLETE!** Boilerplate docs created, MiCA non-applicability confirmed (ADR-012).

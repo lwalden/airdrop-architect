@@ -307,7 +307,7 @@ When a significant decision is made during development, add it here with:
 
 ---
 
-### PDR-002: Transactional Email Service
+### PDR-003: Transactional Email Service
 **Date:** 2026-02-03
 **Status:** Pending Decision
 
@@ -332,6 +332,62 @@ When a significant decision is made during development, add it here with:
 **Recommendation:** Start with **Stripe's native receipt emails** (free, automatic) and add SendGrid for welcome/feature emails in Phase 2.
 
 **Action Required:** User to decide on email provider preference
+
+---
+
+### ADR-013: RAG for Protocol Parsing and Path-to-Eligibility
+**Date:** 2026-02-16
+**Status:** Decided
+
+**Context:** Planned AI features require trustworthy outputs from fast-changing protocol docs and announcements. Pure prompt-based generation without source retrieval is too brittle for eligibility criteria and user guidance.
+
+**Decision:**
+- Adopt **RAG** as the default architecture for:
+  - AI Protocol Parsing
+  - Path-to-Eligibility explanations
+  - Criteria change-detection alerts
+- Require citation-backed responses for user-facing AI recommendations
+- If retrieval confidence is low or conflicting, fall back to deterministic messaging and/or human review
+- Keep agentic automation scoped to internal ingestion/QA workflows (not autonomous user-facing strategy execution)
+
+**Rationale:**
+- Improves trust via explicit citations
+- Reduces hallucination risk on compliance-sensitive or time-sensitive protocol criteria
+- Supports fast updates when source docs change
+- Preserves non-custodial informational-service posture while improving product differentiation
+
+**Implementation Notes:**
+- Maintain a curated source registry of approved protocol docs and announcement feeds
+- Store versioned source snapshots for reproducibility and change diffs
+- Track RAG quality metrics: citation coverage, retrieval hit rate, groundedness score, stale-source ratio
+- Add offline evaluation harness before beta launch (extraction precision/recall + answer grounding)
+
+---
+
+### ADR-014: RAG Retrieval Backend
+**Date:** 2026-02-16
+**Status:** Decided
+
+**Context:** RAG is now in-scope for AI Protocol Parsing and Path-to-Eligibility explanations. We need to choose a retrieval backend that supports filtered search, citation metadata, and manageable operating cost.
+
+**Options:**
+1. **Azure AI Search (vector + hybrid search)** - Strong retrieval features, built-in ranking controls, higher baseline cost
+2. **Cosmos DB vector search** - Fewer moving parts in existing stack, lower integration overhead, potentially weaker retrieval tuning controls
+3. **Hybrid** - Cosmos for canonical structured criteria + Azure AI Search for unstructured chunk retrieval
+
+**Considerations:**
+- Need citation-grade metadata (`sourceUrl`, `sourceTitle`, `snapshotDate`, `chunkId`)
+- Must support tenant-safe filtering if B2B knowledge partitions are needed later
+- Cost profile should stay viable during low-traffic periods
+- Retrieval quality directly impacts trust in recommendation outputs
+
+**Decision:** Start with **Azure AI Search** for retrieval quality and operational controls, while keeping chunk canonical data in Cosmos DB for portability.
+
+**Implementation Notes:**
+- Use Azure AI Search for vector + hybrid retrieval and relevance tuning.
+- Keep canonical chunk documents, source snapshots, and provenance metadata in Cosmos DB.
+- Ensure retrieved chunks include citation metadata required by user-facing responses.
+- Reassess cost and relevance quality after beta using RAG evaluation metrics.
 
 ---
 

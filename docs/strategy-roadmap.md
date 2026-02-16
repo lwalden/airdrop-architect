@@ -14,8 +14,8 @@
 4. **Azure/C# Native** - Built on your 12 years of expertise
 
 **Financial Targets:**
-- Month 12: 2,500 MAU, $3,625 MRR, ~$2,800 net profit
-- Month 24: 12,000 MAU, $17,400 MRR, ~$15,000 net profit
+- Month 14: 2,500 MAU, $3,625 MRR, ~$2,800 net profit
+- Month 26: 12,000 MAU, $17,400 MRR, ~$15,000 net profit
 - Exit potential: $150K-$400K (2-3x annual revenue)
 
 ---
@@ -50,28 +50,31 @@
 ### 1.3 Core Feature Set
 
 **MVP Features (Months 1-4):**
-1. ✅ Eligibility Checker - Check wallets against known airdrops
-2. ✅ Points Dashboard - Track Hyperliquid, EigenLayer, Blur, etc.
-3. ✅ Telegram Bot - Primary interface for crypto users
-4. ✅ Stripe + Crypto Payments - Accept USD, BTC, ETH, USDC
+1. Eligibility Checker - Check wallets against known airdrops
+2. Points Tracking - Track Hyperliquid, EigenLayer, Blur, etc. via Telegram/API
+3. Telegram Bot - Primary interface for crypto users
+4. Stripe + Crypto Payments - Accept USD, BTC, ETH, USDC
 
-**Phase 2 Features (Months 5-8):**
-1. 🔄 Path-to-Eligibility Engine - "Do X, Y, Z to qualify for [Airdrop]"
-2. 🔄 Sybil Protection Analyzer - "Your activity looks robotic, here's how to fix it"
-3. 🔄 AI Protocol Parsing - Auto-extract criteria from whitepapers/docs
-4. 🔄 Transaction Jitter Recommendations - Randomization guidance
-5. 🔄 Transactional Email System - Payment receipts, welcome emails, subscription notifications
+**Phase 2 Features (Months 5-10):**
+1. Path-to-Eligibility Engine - "Do X, Y, Z to qualify for [Airdrop]" with citations
+2. Sybil Protection Analyzer - "Your activity looks robotic, here's how to fix it"
+3. AI Protocol Parsing (RAG) - Extract criteria from whitepapers/docs with source links
+4. Criteria Change Detection - Alert users when protocol rules or announcements shift
+5. Transaction Jitter Recommendations - Randomization guidance
+6. Transactional Email System - Payment receipts, welcome emails, subscription notifications
 
-**Phase 3 Features (Months 9-12):**
-1. 📊 Portfolio Analytics - ROI tracking across farming activities
-2. 📊 Historical Performance - "Users who did X earned $Y on average"
-3. 📊 API + Webhook System - For developers and integrations
-4. 📊 White-label licensing - For wallets wanting to embed
+**Phase 3 Features (Months 11-14):**
+1. Portfolio Analytics - ROI tracking across farming activities
+2. Historical Performance - "Users who did X earned $Y on average"
+3. API + Webhook System - For developers and integrations
+4. White-label licensing - For wallets wanting to embed
+5. RAG quality and cost optimization - Retrieval tuning, eval harness, guardrails
 
-**Phase 4 Features (Months 13+):**
-1. 🌍 Localization - Spanish, Portuguese, Chinese translations
-2. 🌍 Regional Expansion - Evaluate lifting geo-restrictions as regulations evolve
-3. 🌍 Multi-language ToS/Privacy Policy
+**Phase 4 Features (Months 15+):**
+1. React Web Dashboard - Secondary UX for power users and B2B admins
+2. Localization - Spanish, Portuguese, Chinese, Russian (if sanctions are lifted)
+3. Regional Expansion - Evaluate lifting geo-restrictions as regulations evolve
+4. Multi-language ToS/Privacy Policy
 
 ### 1.4 Points Meta: The New Airdrop Paradigm
 
@@ -110,7 +113,7 @@ The airdrop landscape shifted in 2023-2024:
 │                      CLIENT LAYER                               │
 ├─────────────────┬─────────────────┬─────────────────────────────┤
 │   React Web App │  Telegram Bot   │      REST API               │
-│   (Dashboard)   │  (Primary UX)   │   (Developers/B2B)          │
+│   (Phase 4+)    │  (Primary UX)   │   (Developers/B2B)          │
 └────────┬────────┴────────┬────────┴────────────┬────────────────┘
          │                 │                     │
          ▼                 ▼                     ▼
@@ -153,11 +156,16 @@ The airdrop landscape shifted in 2023-2024:
 
 ### 2.3 Database Schema (Cosmos DB)
 
+**Partitioning Strategy (ADR-009):**
+- User and tenant-owned records use `tenantId` (B2B) or `userId` (direct users) as the partition dimension.
+- Shared reference data (airdrops/points programs) remains globally readable.
+- All user-personalized outputs (eligibility, snapshots, recommendations) carry `tenantId` for logical isolation.
+
 **Container: Users**
 ```json
 {
   "id": "user-uuid",
-  "partitionKey": "users",
+  "partitionKey": "tenant-{tenantId}", // or user-{id} for direct users
   "tenantId": null,
   "telegramId": 123456789,
   "email": "user@example.com",
@@ -183,7 +191,7 @@ The airdrop landscape shifted in 2023-2024:
 ```json
 {
   "id": "airdrop-uuid",
-  "partitionKey": "airdrops",
+  "partitionKey": "airdrop-{id}",
   "name": "Arbitrum",
   "tokenSymbol": "ARB",
   "chain": "arbitrum",
@@ -205,7 +213,7 @@ The airdrop landscape shifted in 2023-2024:
 ```json
 {
   "id": "points-uuid",
-  "partitionKey": "points",
+  "partitionKey": "protocol-{protocolName}",
   "protocolName": "Hyperliquid",
   "pointsName": "Points",
   "chain": "arbitrum",
@@ -222,7 +230,8 @@ The airdrop landscape shifted in 2023-2024:
 ```json
 {
   "id": "eligibility-uuid",
-  "partitionKey": "elig-{airdropId}",
+  "partitionKey": "tenant-{tenantId}",
+  "tenantId": "tenant-uuid",
   "airdropId": "airdrop-uuid",
   "walletAddress": "0x123...",
   "allocationAmount": 1250.5,
@@ -236,7 +245,8 @@ The airdrop landscape shifted in 2023-2024:
 ```json
 {
   "id": "snapshot-uuid",
-  "partitionKey": "snapshot-{walletAddress}",
+  "partitionKey": "tenant-{tenantId}",
+  "tenantId": "tenant-uuid",
   "walletAddress": "0x123...",
   "protocolId": "points-uuid",
   "points": 12500,
@@ -386,6 +396,7 @@ public class EligibilityService
 | Venezuela | Significant restrictions |
 | Afghanistan | Partial |
 | Algeria | Crypto banned (July 2025) |
+| Crimea Region | OFAC restrictions |
 
 **Implementation:**
 - IP-based geo-detection at API gateway level
@@ -402,7 +413,7 @@ public class EligibilityService
 **Internationalization Strategy:**
 - MVP: English-only, but code architected for i18n from Day 1
 - All user-facing strings externalized to locale files
-- Phase 4+: Add translations based on user demand (Spanish, Portuguese, Chinese priority)
+- Phase 4+: Add translations based on user demand (Spanish, Portuguese, Chinese, Russian if sanctions are lifted)
 - Legal docs require translation when expanding to non-English markets
 
 ### 3.5 Technical Debt Checkpoints
@@ -416,72 +427,71 @@ public class EligibilityService
 
 ## Part 4: Development Timeline & Costs
 
-### 4.1 Phase 1: MVP Development (Months 1-4)
+**Quality Gate for All Coding Work:** Every implementation task must include adding or updating unit tests in the corresponding test project before completion.
 
+### 4.1 Phase 1: MVP Development (Months 1-4)
 | Month | Focus | Deliverables |
 |-------|-------|--------------|
 | 1 | Infrastructure | Azure setup, Cosmos DB, basic API, auth |
 | 2 | Core Checker | Eligibility service, Alchemy/Helius integration |
 | 3 | Telegram Bot | Full bot functionality, Stripe/Coinbase payments |
-| 4 | Points + Polish | Points tracking, React dashboard, testing |
+| 4 | Points + Hardening | Points tracking, reliability testing, launch readiness |
 
 **Estimated Monthly Costs - Phase 1:**
 | Item | Cost |
 |------|------|
 | Azure Functions (Consumption) | $5-15 |
-| Cosmos DB (Free tier → Serverless) | $0-25 |
+| Cosmos DB (Free tier -> Serverless) | $0-25 |
 | Azure Redis (Basic) | $15 |
 | Alchemy (Free tier) | $0 |
 | Helius (Free tier) | $0 |
 | Domain + Cloudflare | $15 |
 | **Total** | **$40-70** |
 
-### 4.2 Phase 2: AI Integration (Months 5-8)
-
+### 4.2 Phase 2: AI + RAG Integration (Months 5-10)
 | Month | Focus | Deliverables |
 |-------|-------|--------------|
-| 5 | Path Engine | "How to qualify" recommendations |
-| 6 | Sybil Analyzer | Transaction pattern analysis |
-| 7 | AI Parsing | Azure OpenAI for protocol docs |
-| 8 | Beta Launch | Public launch, initial users |
+| 5 | RAG Foundations | Source registry, ingestion pipeline, chunking + metadata strategy |
+| 6 | Protocol Parsing V1 | Criteria extraction from docs/announcements into structured schema |
+| 7 | Path Engine V1 | Citation-backed path-to-eligibility responses in Telegram/API |
+| 8 | Change Detection | Snapshot diffing, criteria-shift alerts, review workflow |
+| 9 | Sybil Analyzer | Transaction pattern analysis + jitter recommendation engine |
+| 10 | Beta Launch | Quality gates, eval metrics, cost tuning, public beta |
 
 **Estimated Monthly Costs - Phase 2:**
 | Item | Cost |
 |------|------|
-| Azure (Scaled up) | $30-50 |
-| Azure OpenAI | $20-50 |
-| Alchemy (Growth usage) | $0-49 |
-| Helius (Developer tier) | $49 |
+| Azure (scaled up) | $50-80 |
+| Azure OpenAI | $40-120 |
+| Retrieval index (Azure AI Search - selected) | $50-150 |
+| Alchemy + Helius (growth usage) | $49-99 |
 | Marketing (initial) | $0-50 |
-| **Total** | **$100-250** |
+| **Total** | **$189-499** |
 
-### 4.3 Phase 3: Launch & Growth (Months 9-12)
-
+### 4.3 Phase 3: Launch & Growth (Months 11-14)
 | Month | Focus | Deliverables |
 |-------|-------|--------------|
-| 9 | Marketing Push | Content, Twitter, Discord outreach |
-| 10 | Referrals | Referral program, affiliate system |
-| 11 | API Launch | Developer API, documentation |
-| 12 | Optimization | Performance, cost optimization |
+| 11 | Marketing Push | Content, Twitter, Discord outreach |
+| 12 | Referrals | Referral program, affiliate system |
+| 13 | API Launch | Developer API, documentation, webhook onboarding |
+| 14 | Optimization | Performance, cost optimization, RAG quality hardening |
 
 **Estimated Monthly Costs - Phase 3:**
 | Item | Cost |
 |------|------|
-| Azure (Production) | $75-150 |
-| API Providers | $100-200 |
-| Marketing/Ads | $200-500 |
+| Azure (Production) | $100-200 |
+| API Providers + Retrieval Infrastructure | $150-300 |
+| Marketing/Ads | $250-550 |
 | Tools (analytics, etc.) | $50-100 |
-| **Total** | **$400-950** |
+| **Total** | **$550-1,150** |
 
 ### 4.4 Two-Year Summary
-
 | Period | Avg Monthly Cost | Cumulative |
 |--------|------------------|------------|
 | Months 1-4 | $55 | $220 |
-| Months 5-8 | $175 | $920 |
-| Months 9-12 | $675 | $3,620 |
-| Year 2 | $1,200 | $18,020 |
-
+| Months 5-10 | $325 | $2,170 |
+| Months 11-14 | $850 | $5,570 |
+| Months 15-26 | $1,400 | $22,370 |
 **One-Time Costs (Optional but Recommended):**
 - WA LLC formation: ~$200
 - Legal/TOS consultation: ~$500-1,000
@@ -493,28 +503,26 @@ public class EligibilityService
 ## Part 5: Revenue Projections
 
 ### 5.1 Conservative Model (2% Paid Conversion)
-
 | Month | MAU | Paid Users | MRR | Expenses | Net |
 |-------|-----|------------|-----|----------|-----|
-| 8 | 500 | 0 | $0 | $200 | -$200 |
-| 10 | 1,500 | 30 | $600 | $500 | +$100 |
-| 12 | 3,000 | 60 | $1,200 | $700 | +$500 |
-| 18 | 8,000 | 160 | $3,200 | $1,000 | +$2,200 |
-| 24 | 15,000 | 300 | $6,000 | $1,500 | +$4,500 |
+| 10 | 500 | 0 | $0 | $250 | -$250 |
+| 12 | 1,500 | 30 | $600 | $550 | +$50 |
+| 14 | 3,000 | 60 | $1,200 | $800 | +$400 |
+| 20 | 8,000 | 160 | $3,200 | $1,100 | +$2,100 |
+| 26 | 15,000 | 300 | $6,000 | $1,600 | +$4,400 |
 
-**Year 2 Annual Net: ~$50,000**
+**Year 2 Annual Net: ~$48,000**
 
 ### 5.2 Optimistic Model (5% Paid Conversion)
-
 | Month | MAU | Paid Users | MRR | Expenses | Net |
 |-------|-----|------------|-----|----------|-----|
-| 8 | 500 | 0 | $0 | $200 | -$200 |
-| 10 | 1,500 | 75 | $1,500 | $500 | +$1,000 |
-| 12 | 3,000 | 150 | $3,000 | $700 | +$2,300 |
-| 18 | 8,000 | 400 | $8,000 | $1,000 | +$7,000 |
-| 24 | 15,000 | 750 | $15,000 | $1,500 | +$13,500 |
+| 10 | 500 | 0 | $0 | $250 | -$250 |
+| 12 | 1,500 | 75 | $1,500 | $550 | +$950 |
+| 14 | 3,000 | 150 | $3,000 | $800 | +$2,200 |
+| 20 | 8,000 | 400 | $8,000 | $1,100 | +$6,900 |
+| 26 | 15,000 | 750 | $15,000 | $1,600 | +$13,400 |
 
-**Year 2 Annual Net: ~$120,000**
+**Year 2 Annual Net: ~$115,000**
 
 ### 5.3 Revenue Mix Assumptions
 
@@ -570,47 +578,55 @@ public class EligibilityService
 
 ### Immediate Actions (This Week)
 
-1. ✅ Set up Azure account and initial resources
-2. ✅ Create GitHub repository
-3. ✅ Set up local development environment
-4. ✅ Get Alchemy API key (free tier)
-5. ✅ Create Telegram bot via BotFather
-6. ✅ Create Stripe account
-7. ✅ Create Coinbase Commerce account
-8. ✅ Draft Terms of Service (boilerplate created)
-9. ✅ Draft Privacy Policy (boilerplate created, GDPR/CCPA compliant)
-10. ✅ MiCA regulatory analysis (does NOT apply - informational service only)
-11. ✅ Cookie Policy created (EU requirement for web dashboard)
-12. ✅ Data Subject Rights page created (GDPR/CCPA compliance)
-13. ⚠️ Replace placeholders in legal docs and attorney review
-14. 🔄 Implement geo-restriction service (OFAC compliance)
-15. 🔄 Set up i18n infrastructure (locale files, string externalization)
-16. 🔄 Implement cookie consent banner (web dashboard)
+1. Sync roadmap and ADRs to the Telegram-first scope and tenant-aware partitioning model
+2. Define approved RAG source corpus (official docs, governance posts, protocol announcements)
+3. Provision Azure AI Search index and finalize retrieval schema/filters
+4. Build a gold evaluation set (minimum 30 protocol-criteria Q&A pairs with expected citations)
+5. Add or update unit tests for each implementation task completed this week
 
-### Week 1-2 Development
+### Months 1-4 Calendar (MVP - Telegram First)
 
-1. Basic Azure Functions project structure
-2. Cosmos DB containers and models
-3. User authentication flow
-4. Telegram bot skeleton with /start command
-5. Application Insights with distributed tracing
+1. Infrastructure and auth foundations
+2. Eligibility service + Alchemy/Helius integrations
+3. Telegram bot and payment flows (Stripe + Coinbase)
+4. Points tracking and reliability hardening
+5. React dashboard explicitly deferred to Phase 4 (ADR-003)
 
-### Week 3-4 Development
+### Months 5-10 Calendar (Phase 2: AI + RAG Delivery)
 
-1. Eligibility checking service
-2. Alchemy integration for EVM chains
-3. First 10 airdrops seeded in database
-4. /check command working
-5. Polly resilience patterns implemented
+| Month | Focus | Deliverables |
+|-------|-------|--------------|
+| 5 | Corpus + Ingestion | Source registry, crawler/parsers, source snapshot storage |
+| 6 | Retrieval Layer | Chunking policy, embeddings, vector index, metadata filters |
+| 7 | Answer Layer | Citation-backed protocol parsing + path-to-eligibility responses |
+| 8 | Change Detection | Criteria diff engine and alert routing (Telegram + API webhooks) |
+| 9 | Guardrails + QA | Confidence thresholds, human review queue, hallucination checks |
+| 10 | Beta Readiness | Load testing, prompt/index tuning, observability dashboards |
 
-### Month 2 Goals
+### Months 11-14 Calendar (Phase 3: Commercialization)
 
-1. Points tracking for top 5 protocols
-2. Stripe + Coinbase Commerce payments
-3. React dashboard MVP
-4. Full Telegram bot functionality
+| Month | Focus | Deliverables |
+|-------|-------|--------------|
+| 11 | Distribution | Content and community growth |
+| 12 | Monetization | Referral and partner programs |
+| 13 | Developer Surface | Public API + webhook docs + usage plans |
+| 14 | Optimization | Cost controls, SLO tuning, RAG quality hardening |
 
----
+### RAG Backlog Additions
+
+1. Citation renderer for Telegram/API output (`title`, `url`, `retrievedAt`)
+2. Criteria change detector with severity scoring and subscription alerts
+3. Human-review queue for low-confidence or conflicting source evidence
+4. Offline eval harness: extraction precision/recall + grounded answer score
+5. Ops metrics: retrieval hit rate, citation coverage, token/RU spend, stale-source ratio
+
+### Documents and Files to Add or Update for RAG
+
+1. Update `docs/strategy-roadmap.md` with phased RAG delivery and revised timeline
+2. Update `DECISIONS.md` with RAG adoption and retrieval backend ADRs
+3. Add `docs/rag-source-registry.md` (approved sources, ownership, refresh cadence)
+4. Add `docs/rag-evaluation-plan.md` (quality gates and acceptance thresholds)
+5. Update `docs/OPERATIONS-RUNBOOK.md` with RAG rollback + bad-source incident playbooks
 
 ## Appendix: Resources
 
@@ -649,6 +665,7 @@ public class EligibilityService
 
 ---
 
-*Document Version: 2.1*  
-*Last Updated: February 2026*  
+*Document Version: 2.3*  
+*Last Updated: February 16, 2026*  
 *Combined Analysis: Claude + Gemini + Enterprise Review*
+
